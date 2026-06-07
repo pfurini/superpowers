@@ -1,13 +1,13 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements, and design through a recommendation-driven interview, then writes a spec/design doc and records durable decisions (glossary terms, ADRs) before implementation."
 ---
 
 # Brainstorming Ideas Into Designs
 
 Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Start by understanding the current project context, then interview the user one question at a time to refine the idea — each question carrying your recommended answer. Once you share one mental model of what you're building, present the design, get approval, and write it up as a spec, capturing any durable decisions (glossary terms, ADRs) alongside it.
 
 <HARD-GATE>
 Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
@@ -17,41 +17,49 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 
 Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
 
+Conversely, don't inflate a simple change with ceremony it doesn't need: the spec backbone scales down to a few bullets, and the glossary/ADR steps are conditional. A trivial change won't surface a term worth canonicalizing or a decision worth an ADR — so you skip them. See "Capture durable decisions" below.
+
 ## Checklist
 
-You MUST create a task for each of these items and complete them in order:
+You MUST create a task for each of these items and complete them in order. Items marked *(conditional)* are skipped when nothing qualifies — don't manufacture work to fill them:
 
-1. **Explore project context** — check files, docs, recent commits
+1. **Explore project context** — files, docs, recent commits; note the existing ADRs (`docs/adr/`) and glossary (`GLOSSARY.md`, or wherever the project keeps its terms)
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+3. **Interview to alignment** — clarifying questions one at a time, each with your recommended answer; walk the decision tree in dependency order; sharpen terminology as you go. See `grilling.md`.
+4. **Propose 2-3 approaches** — with trade-offs, a rough effort size, and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` using the backbone in `spec-format.md`, and commit
+7. **Capture durable decisions** *(conditional)* — update `GLOSSARY.md` for any term that needed canonicalizing; record an ADR for any decision meeting all three criteria, deduped against existing ADRs. See `GLOSSARY-FORMAT.md` and `ADR-FORMAT.md`.
+8. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+9. **User reviews written spec** — ask the user to review the spec (and any ADRs/glossary changes) before proceeding
+10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
 ```dot
 digraph brainstorming {
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
+    "Interview to alignment\n(one Q at a time, w/ recommendation)" [shape=box];
+    "Decision tree closed?" [shape=diamond];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
     "Write design doc" [shape=box];
+    "Capture durable decisions\n(glossary, ADRs — conditional)" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
 
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Interview to alignment\n(one Q at a time, w/ recommendation)";
+    "Interview to alignment\n(one Q at a time, w/ recommendation)" -> "Decision tree closed?";
+    "Decision tree closed?" -> "Interview to alignment\n(one Q at a time, w/ recommendation)" [label="no, next branch"];
+    "Decision tree closed?" -> "Propose 2-3 approaches" [label="yes"];
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
     "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec self-review\n(fix inline)";
+    "Write design doc" -> "Capture durable decisions\n(glossary, ADRs — conditional)";
+    "Capture durable decisions\n(glossary, ADRs — conditional)" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
     "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
@@ -64,27 +72,32 @@ digraph brainstorming {
 
 **Understanding the idea:**
 
-- Check out the current project state first (files, docs, recent commits)
+- Check out the current project state first (files, docs, recent commits), including how the project already names things and what decisions it has already recorded.
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
-- Focus on understanding: purpose, constraints, success criteria
+- For appropriately-scoped projects, interview one question at a time to refine the idea.
+
+**Interviewing — this is a grill, not a survey:**
+
+The clarifying-questions phase decides whether the design rests on a shared model or on hidden assumptions. Keep the focus on purpose, constraints, and success criteria, and run it with three disciplines (full detail in `grilling.md`):
+
+- **Map the decision tree first, silently**, and ask the root questions before the leaves — answers to upstream decisions prune the downstream ones.
+- **Carry a recommendation on every question**, with a one-line reason. The user confirms, overrides, or redirects — they shouldn't have to generate answers from scratch.
+- **Check the code before you ask.** If the repo already answers a question, cite it instead of asking. Prefer the project's semantic/code-graph tools if it has them; else an explore subagent or grep/read.
+
+Ask one question per message, wait, absorb the answer (cross off or open branches), then ask the next — in dependency order. Prefer multiple-choice when the user is picking from a known set. Sharpen fuzzy terms into canonical ones as you go (and into `GLOSSARY.md`). Stop when every open decision is deferred or out of scope and nothing left would materially change the design.
 
 **Exploring approaches:**
 
-- Propose 2-3 different approaches with trade-offs
-- Present options conversationally with your recommendation and reasoning
-- Lead with your recommended option and explain why
+- Propose 2-3 different approaches with trade-offs. For each, name the cost and the benefit in one line each, plus a rough effort size (S / M / L / XL).
+- Lead with your recommended option and explain why — and say what evidence would change your recommendation.
 
 **Presenting the design:**
 
-- Once you believe you understand what you're building, present the design
-- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
-- Ask after each section whether it looks right so far
-- Cover: architecture, components, data flow, error handling, testing
-- Be ready to go back and clarify if something doesn't make sense
+- Once you share one model of what you're building, present the design.
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced.
+- Ask after each section whether it looks right so far.
+- Cover the spec backbone (what / why / scope / non-goals / acceptance criteria) plus the design shape (architecture, components, data flow, error handling, testing) — see `spec-format.md`. Be ready to go back and clarify if something doesn't make sense.
 
 **Design for isolation and clarity:**
 
@@ -103,10 +116,19 @@ digraph brainstorming {
 
 **Documentation:**
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, using the backbone in `spec-format.md`
   - (User preferences for spec location override this default)
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
+
+**Capture durable decisions (conditional):**
+
+The spec is per-task. Two project-level artifacts outlive it, and the interview usually surfaces material for them. Don't re-state a decision in all three — each has one job (`spec-format.md` has the division-of-labor table):
+
+- **Glossary** — when the interview pinned down a term (resolved an overloaded word, picked a canonical name over alternatives), record it in `GLOSSARY.md`. Terminology only, no behavior. If the project keeps its glossary somewhere else (a README, an AGENTS/CLAUDE file), offer to consolidate into `GLOSSARY.md` and leave a cross-reference, rather than maintaining two. See `GLOSSARY-FORMAT.md`.
+- **ADRs** — when the interview settled a decision that is hard to reverse, surprising without context, AND the result of a real trade-off (all three), record an ADR in `docs/adr/`. First read the existing ADRs and match them against the decisions the session surfaced — write only the genuine gaps; never duplicate a recorded decision (supersede it if you're revising it). See `ADR-FORMAT.md`.
+
+Most sessions produce a few glossary terms and zero-to-two ADRs. A trivial change produces neither — that's expected; skip the step.
 
 **Spec Self-Review:**
 After writing the spec document, look at it with fresh eyes:
@@ -121,7 +143,7 @@ Fix any issues inline. No need to re-review — just fix and move on.
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+> "Spec written and committed to `<path>` (plus `<N>` ADR(s) and glossary updates, if any). Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
 
 Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
 
@@ -133,10 +155,14 @@ Wait for the user's response. If they request changes, make them and re-run the 
 ## Key Principles
 
 - **One question at a time** - Don't overwhelm with multiple questions
+- **Always recommend an answer** - Every question carries your pick and a one-line reason; the user confirms or redirects
+- **Code before question** - Don't ask what the repo already answers; find it and cite it
+- **Resolve the decision tree in dependency order** - Root decisions before the leaves they constrain
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on
+- **Name things once** - Sharpen terms into the glossary; record load-bearing decisions as ADRs; don't let the same concept drift across docs
 - **Be flexible** - Go back and clarify when something doesn't make sense
 
 ## Visual Companion
@@ -155,5 +181,4 @@ A browser-based companion for showing mockups, diagrams, and visual options duri
 
 A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
 
-If they agree to the companion, read the detailed guide before proceeding:
-`skills/brainstorming/visual-companion.md`
+If they agree to the companion, read the detailed guide in `visual-companion.md` (in this directory) before proceeding.
