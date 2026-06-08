@@ -44,6 +44,59 @@ Has the user already indicated their worktree preference in your instructions? I
 
 Honor any existing declared preference without asking. If the user declines consent, work in place and skip to Step 2.
 
+## Step 0.5: Verify the Base Branch Is Current
+
+**Runs after Step 0 confirms a worktree is needed, before EITHER creation mechanism (1a native tool or 1b git).** A worktree forked from a stale base silently bakes outdated code (or omits unpushed work) into the feature branch. What the worktree forks *from* depends on the mechanism:
+
+- **Native tool, default `worktree.baseRef: fresh`** → forks from **`origin/<default-branch>`** (e.g. `origin/dev`). The tool does *not* fetch, so this ref can be stale — a plain `git fetch` is the whole fix.
+- **Native tool `worktree.baseRef: head`, or the git fallback** (`git worktree add -b`) → forks from your **current local HEAD**, which must itself be made current.
+
+### Always: refresh, then warn on unpushed work
+
+```bash
+git fetch origin --quiet 2>/dev/null      # refreshes origin/<default-branch> + all upstreams — fixes a stale `fresh` fork
+
+DEFAULT=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null); DEFAULT=${DEFAULT#origin/}
+# the LOCAL branch that TRACKS origin/<default-branch> (usually same name, e.g. local `dev`) — NOT necessarily the checked-out one
+TRACKING=$(git for-each-ref --format='%(refname:short) %(upstream:short)' refs/heads \
+  | awk -v u="origin/$DEFAULT" '$2==u{print $1; exit}')
+AHEAD=$(git rev-list --count "origin/$DEFAULT..$TRACKING" 2>/dev/null)   # unpushed commits on the tracking branch
+```
+
+A `fresh` fork forks from `origin/<default-branch>`, not from any local branch — so after the fetch there is **nothing to fast-forward**.
+
+**If `AHEAD > 0`** — the local branch tracking `origin/<default-branch>` (e.g. local `dev`) has unpushed commits a `fresh` fork will **exclude** — **ask**:
+
+> "Local `<tracking>` is N commits ahead of `origin/<default-branch>` (unpushed). A fresh worktree forks from `origin/<default-branch>` and won't include them. Push first, or fork without them?"
+
+### Only when forking from local HEAD (git fallback, or `baseRef: head`)
+
+The base is your current branch, so make *it* current — fast-forward to its upstream:
+
+```bash
+BASE=$(git branch --show-current)         # empty when detached HEAD
+if [ -n "$BASE" ] && git rev-parse --verify --quiet "origin/$BASE" >/dev/null; then
+  LOCAL=$(git rev-parse "$BASE"); REMOTE=$(git rev-parse "origin/$BASE")
+  BASE_MB=$(git merge-base "$BASE" "origin/$BASE")
+  # LOCAL == REMOTE              -> current, proceed
+  # behind (LOCAL == BASE_MB)    -> fast-forward (ask only if uncommitted changes block it)
+  # ahead / diverged             -> ask before forking
+fi
+# detached HEAD or no origin/$BASE upstream -> skip, report externally-managed
+```
+
+**Behind** — a fast-forward is always possible (local is an ancestor); **just do it**, even with uncommitted changes (git keeps non-overlapping ones):
+
+```bash
+git merge --ff-only "origin/$BASE" -q
+```
+
+If the FF **fails** (uncommitted changes would be overwritten — git refuses and leaves the tree untouched), **ask**, recommending stash → FF → pop:
+
+> "`<base>` is N commits behind `origin/<base>` but uncommitted changes block the fast-forward. Stash them, fast-forward, then restore (`git stash push -u && git merge --ff-only origin/<base> && git stash pop`)?"
+
+**Ahead / diverged** — **ask** before forking; never silently pick a side. **Detached HEAD / no upstream** — skip, report externally-managed.
+
 ## Step 1: Create Isolated Workspace
 
 **You have two mechanisms. Try them in this order.**
@@ -145,6 +198,13 @@ Ready to implement <feature-name>
 |-----------|--------|
 | Already in linked worktree | Skip creation (Step 0) |
 | In a submodule | Treat as normal repo (Step 0 guard) |
+| Before any worktree creation | `git fetch origin` (Step 0.5) |
+| Default `fresh` base | Forks from origin/<default> — fetch is the whole fix (Step 0.5) |
+| Tracking branch has unpushed commits | Ask: push or fork without (Step 0.5) |
+| Forking from local HEAD, behind | Fast-forward it (Step 0.5) |
+| FF blocked by uncommitted changes | Ask: stash → FF → pop (Step 0.5) |
+| Local HEAD ahead / diverged | Ask before forking (Step 0.5) |
+| Detached HEAD or no upstream | Skip the HEAD reconcile (Step 0.5) |
 | Native worktree tool available | Use it (Step 1a) |
 | No native tool | Git worktree fallback (Step 1b) |
 | `.worktrees/` exists | Use it (verify ignored) |
@@ -186,6 +246,10 @@ Ready to implement <feature-name>
 ## Red Flags
 
 **Never:**
+- Skip `git fetch` before creating the worktree — a default `fresh` fork from `origin/<default-branch>` would be stale (Step 0.5)
+- Fork a `fresh` worktree while the tracking branch has unpushed commits without warning — they won't be in the fork (Step 0.5)
+- Fast-forward a local branch in `fresh` mode — the fork ignores it; only fetch matters (Step 0.5)
+- Force a fast-forward over uncommitted changes — if the FF is blocked, ask (stash → FF → pop)
 - Create a worktree when Step 0 detects existing isolation
 - Use `git worktree add` when you have a native worktree tool (e.g., `EnterWorktree`). This is the #1 mistake — if you have it, use it.
 - Skip Step 1a by jumping straight to Step 1b's git commands
@@ -195,6 +259,7 @@ Ready to implement <feature-name>
 
 **Always:**
 - Run Step 0 detection first
+- Verify the base branch is current before creating the worktree (Step 0.5)
 - Prefer native tools over git fallback
 - Follow directory priority: explicit instructions > existing project-local directory > default
 - Verify directory is ignored for project-local
