@@ -37,6 +37,12 @@ Can't answer one? Mark it `OPEN` and move it to Open Questions — don't guess.
 least one per goal. "Orders older than 30 days return 410 for all roles" — yes. "The
 feature works correctly" / "edge cases handled" — no.
 
+**Phrase the invariant, not a test shape.** "The link's href is derived from the course
+slug" (an invariant — one assertion on the slug proves it) beats "asserted for two
+different courses" (a test shape — it implies a parametrized fixture nobody needs). A
+criterion says what is *true* when done; it never prescribes how many tests prove it.
+Mapping each criterion to its cheapest verification is the plan's job, not the spec's.
+
 **Open Questions.** Each names the question, *who likely knows*, and *the impact of
 getting it wrong*. If the spec has none, you're not looking hard enough — write down the
 assumption you're least sure of as a question; that's your weakest link.
