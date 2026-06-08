@@ -53,7 +53,9 @@ Terminology drift is a design bug that ships. While you interview:
   you seem to mean Y — which is it?"
 - **Sharpen fuzzy or overloaded terms.** Propose a precise canonical name. "You're
   saying 'account' — do you mean the Customer or the login User? Those are different
-  things." When a term resolves, update `GLOSSARY.md` right then — don't batch it.
+  things." When a term resolves, lock its canonical definition in your notes right
+  then — don't lose it. (The `GLOSSARY.md` file write itself is deferred until the
+  worktree exists; see the brainstorming checklist — interview, then workspace, then writes.)
 - **Stress-test relationships with concrete scenarios.** Invent specific cases that
   probe the edges: "A customer cancels one of three items after one has shipped — what
   exists now?" Forces a precision the abstract question doesn't.

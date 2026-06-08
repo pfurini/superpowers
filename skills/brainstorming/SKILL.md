@@ -28,11 +28,12 @@ You MUST create a task for each of these items and complete them in order. Items
 3. **Interview to alignment** — clarifying questions one at a time, each with your recommended answer; walk the decision tree in dependency order; sharpen terminology as you go. See `grilling.md`.
 4. **Propose 2-3 approaches** — with trade-offs, a rough effort size, and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` using the backbone in `spec-format.md`, and commit
-7. **Capture durable decisions** *(conditional)* — update `GLOSSARY.md` for any term that needed canonicalizing; record an ADR for any decision meeting all three criteria, deduped against existing ADRs. See `GLOSSARY-FORMAT.md` and `ADR-FORMAT.md`.
-8. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-9. **User reviews written spec** — ask the user to review the spec (and any ADRs/glossary changes) before proceeding
-10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+6. **Create isolated workspace** — now that the design is approved and the branch name is settled, invoke the using-git-worktrees skill BEFORE writing any file. Every write from here on (spec, glossary, ADRs, plan, code) lands inside the worktree. Steps 1–5 are pure dialogue and stay in the current checkout; the first file write is step 7, and it must happen in the worktree.
+7. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` using the backbone in `spec-format.md`, and commit
+8. **Capture durable decisions** *(conditional)* — update `GLOSSARY.md` for any term that needed canonicalizing; record an ADR for any decision meeting all three criteria, deduped against existing ADRs. See `GLOSSARY-FORMAT.md` and `ADR-FORMAT.md`.
+9. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+10. **User reviews written spec** — ask the user to review the spec (and any ADRs/glossary changes) before proceeding
+11. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
@@ -44,6 +45,7 @@ digraph brainstorming {
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
+    "Create worktree\n(using-git-worktrees — before any write)" [shape=box];
     "Write design doc" [shape=box];
     "Capture durable decisions\n(glossary, ADRs — conditional)" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
@@ -57,7 +59,8 @@ digraph brainstorming {
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
+    "User approves design?" -> "Create worktree\n(using-git-worktrees — before any write)" [label="yes"];
+    "Create worktree\n(using-git-worktrees — before any write)" -> "Write design doc";
     "Write design doc" -> "Capture durable decisions\n(glossary, ADRs — conditional)";
     "Capture durable decisions\n(glossary, ADRs — conditional)" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
@@ -85,7 +88,7 @@ The clarifying-questions phase decides whether the design rests on a shared mode
 - **Carry a recommendation on every question**, with a one-line reason. The user confirms, overrides, or redirects — they shouldn't have to generate answers from scratch.
 - **Check the code before you ask.** If the repo already answers a question, cite it instead of asking. Prefer the project's semantic/code-graph tools if it has them; else an explore subagent or grep/read.
 
-Ask one question per message, wait, absorb the answer (cross off or open branches), then ask the next — in dependency order. Prefer multiple-choice when the user is picking from a known set. Sharpen fuzzy terms into canonical ones as you go (and into `GLOSSARY.md`). Stop when every open decision is deferred or out of scope and nothing left would materially change the design.
+Ask one question per message, wait, absorb the answer (cross off or open branches), then ask the next — in dependency order. Prefer multiple-choice when the user is picking from a known set. Sharpen fuzzy terms into canonical ones as you go and lock each resolved definition in your notes — but **defer the `GLOSSARY.md` file write to step 8** (after the worktree exists), since the interview runs before the workspace is created. Stop when every open decision is deferred or out of scope and nothing left would materially change the design.
 
 **Exploring approaches:**
 
@@ -113,6 +116,12 @@ Ask one question per message, wait, absorb the answer (cross off or open branche
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
 ## After the Design
+
+**Create the workspace first (before any file write):**
+
+- The design is approved, so the branch name is now settled — invoke the using-git-worktrees skill to create the isolated workspace.
+- This MUST happen before the spec, glossary, ADRs, or any other file is written, so the entire feature loop lands inside the worktree (and on its branch), never in the current checkout.
+- If you're already in an isolated workspace (using-git-worktrees Step 0 detects this), it's a no-op — proceed.
 
 **Documentation:**
 
