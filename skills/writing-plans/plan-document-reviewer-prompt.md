@@ -20,7 +20,7 @@ Subagent (general-purpose):
     | Category | What to Look For |
     |----------|------------------|
     | Completeness | TODOs, placeholders, incomplete tasks, missing steps |
-    | Spec Alignment | Plan covers spec requirements, no major scope creep |
+    | Spec Alignment | Plan covers spec requirements; each acceptance criterion has a named verification (an existing test, type-check, or manual check counts — not necessarily a new test); no non-goal is implemented; no major scope creep |
     | Task Decomposition | Tasks have clear boundaries, steps are actionable |
     | Buildability | Could an engineer follow this plan without getting stuck? |
 

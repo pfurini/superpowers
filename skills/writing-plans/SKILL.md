@@ -22,6 +22,13 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
+## Honor Recorded Decisions and Canonical Terms
+
+Before decomposing, read the project's architecture decision records (`docs/adr/` by convention) and its glossary (`GLOSSARY.md`, or wherever terms live). The plan must honor both:
+
+- **Don't contradict an ADR.** Carry the spec's ADR references into the tasks that touch those decisions. Where the project cites ADRs inline in code (e.g. `// ADR-0006: …`), include the citation in the implementation step.
+- **Use canonical terms.** Name types, tables, functions, and variables with the glossary's English identifiers — don't reintroduce the fuzzy synonyms the spec already sharpened away. Consistent names from spec → plan → code keep the three in sync.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
@@ -145,7 +152,11 @@ Every step must contain the actual content an engineer needs. These are **plan f
 
 After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
 
-**1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
+**1. Spec coverage.** Check the plan against the spec's goals, acceptance criteria, non-goals, and open questions:
+- **Goals / requirements** — can you point to a task that implements each? List any gaps.
+- **Acceptance criteria → validation map** — give each criterion a named verification at the *cheapest* layer that already confirms it: an existing test or E2E, the type-checker, or a documented manual check all count. Coverage is collective — one assertion or one existing run can satisfy several criteria. Add a *new* test only for a criterion nothing already proves (TDD governs that new behavior inside its task). Never assume one criterion = one new test. When the criteria are few this is a mental check; when there are enough to lose track, write the map into the plan as a small table (*criterion / how verified / new or existing*).
+- **Non-goals** — confirm no task implements one; that's scope creep.
+- **Open questions** — confirm none that are load-bearing remain unresolved. If one blocks a task, surface it rather than planning around it.
 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
