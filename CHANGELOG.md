@@ -48,6 +48,21 @@ ADR discipline and two worktree-timing fixes.
 
 ### Changed
 
+- **Aligned ADR/glossary format docs with the OpenSpec `openspec-design` skill**
+  (2026-06-23). Ported the CLI-independent refinements from `Fission-AI/OpenSpec`:
+  - `ADR-FORMAT.md` — added a required `title` frontmatter field (mirrors the heading,
+    readable without opening the file) and `Context` to the optional-sections list.
+  - `GLOSSARY-FORMAT.md` — added the "Append, don't clobber" rule and sharpened
+    "Be opinionated" to the "kill synonyms" framing; **removed** the multi-area
+    `GLOSSARY-MAP.md` machinery in favour of a single root `GLOSSARY.md` (a `Location`
+    section); adopted OpenSpec's `**Term**:` entry style (dropped the `## Terms`
+    wrapper); and added optional i18n `code`/`label (<lang>)` fields with a "stop at the
+    default label, delegate the rest to the i18n catalogue" rule (the `code` field is
+    synonym-killing on the code axis, the one sanctioned identifier in a definition).
+  - Deliberately did **not** import OpenSpec's CLI-coupled features (ADR registry /
+    `openspec adr index`, the `change:` field, the `proposed`→`accepted` lifecycle) —
+    superpowers is zero-dependency and cannot maintain them.
+
 - **Acceptance criteria anchored on the invariant, not a test shape** in
   `spec-format.md` (`adbb99e`, 2026-06-08). Criteria state what is true when done; mapping
   a criterion to its verification is the plan's job, not the spec's.

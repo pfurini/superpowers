@@ -14,6 +14,7 @@ default — follow the project's existing convention if it already keeps ADRs el
 ```md
 ---
 id: ADR-NNNN
+title: {the decision, one line}
 status: accepted        # proposed | accepted | deprecated | superseded-by: ADR-MMMM
 date: YYYY-MM-DD
 ---
@@ -31,6 +32,8 @@ prose.
 
 - **`id`** — `ADR-NNNN`, matching the number in the filename. The anchor inline code
   comments cite, so it must be stable and unique.
+- **`title`** — the decision in one line. Mirrors the `# ` heading; lets a reader (or a
+  table of contents) see what was decided without opening the file.
 - **`status`** — one of `proposed | accepted | deprecated | superseded-by: ADR-MMMM`.
   A reader who finds `// ADR-0011` in the code needs the doc to tell them whether it
   still holds; without a status, a stale reference is indistinguishable from a live one.
@@ -43,8 +46,9 @@ rather than deleting the file — deleting leaves the inline code references dan
 
 ## Optional sections
 
-Only when they add genuine value; most ADRs need neither.
+Only when they add genuine value; most ADRs need none.
 
+- **Context** — the forces in play, when the one-line summary under the title isn't enough.
 - **Considered options** — when the rejected alternatives are worth remembering. Don't
   manufacture strawmen; if there was one obvious choice, leave it out.
 - **Consequences** — when non-obvious downstream effects need calling out.
@@ -97,6 +101,7 @@ it (new ADR + `superseded-by` on the old) — don't silently duplicate.
 ```md
 ---
 id: ADR-0007
+title: Purchase and access are separate concerns
 status: accepted
 date: 2026-02-14
 ---
