@@ -1,8 +1,9 @@
 # Task Reviewer Prompt Template
 
-Use this template when dispatching a task reviewer subagent. The reviewer
-reads the task's diff once and returns two verdicts: spec compliance and
-code quality.
+Use this template when dispatching a read-only task reviewer subagent. The
+reviewer reads the task's diff once and returns two verdicts: spec compliance
+and code quality. You (the main agent) wrote the code; the reviewer is a fresh,
+independent reader.
 
 **Purpose:** Verify one task's implementation matches its requirements (nothing
 more, nothing less) and is well-built (clean, tested, maintainable)
@@ -20,14 +21,11 @@ Subagent (general-purpose):
 
     ## What Was Requested
 
-    Read the task brief: [BRIEF_FILE]
+    The task's requirements (the task text from the plan):
+    [TASK_REQUIREMENTS]
 
     Global constraints from the spec/design that bind this task:
     [GLOBAL_CONSTRAINTS]
-
-    ## What the Implementer Claims They Built
-
-    Read the implementer's report: [REPORT_FILE]
 
     ## Diff Under Review
 
@@ -52,34 +50,31 @@ Subagent (general-purpose):
     Your review is read-only on this checkout. Do not mutate the working
     tree, the index, HEAD, or branch state in any way.
 
-    ## Do Not Trust the Report
+    ## Judge the Code, Not the Claims
 
-    Treat the implementer's report as unverified claims about the code. It
-    may be incomplete, inaccurate, or optimistic. Verify the claims against
-    the diff. Design rationales in the report are claims too: "left it per
-    YAGNI," "kept it simple deliberately," or any other justification is the
-    implementer grading their own work. Judge the code on its merits — a
-    stated rationale never downgrades a finding's severity.
+    Any design rationale in the code comments or the task notes is a claim,
+    not a verdict: "left it per YAGNI," "kept it simple deliberately," or any
+    other justification is the author grading their own work. Judge the code
+    on its merits — a stated rationale never downgrades a finding's severity.
 
     ## Tests
 
-    The implementer already ran the tests and reported results with TDD
-    evidence for exactly this code. Do not re-run the suite to confirm their
-    report. Run a test only when reading the code raises a specific doubt
-    that no existing run answers — and then a focused test, never a
-    package-wide suite, race detector run, or repeated/high-count loop. If
-    heavy validation seems warranted, recommend it in your report instead of
-    running it. If you cannot run commands in this environment, name the
-    test you would run.
+    The author already ran the tests for exactly this code. Do not re-run the
+    suite to confirm that. Run a test only when reading the code raises a
+    specific doubt that no existing run answers — and then a focused test,
+    never a package-wide suite, race detector run, or repeated/high-count
+    loop. If heavy validation seems warranted, recommend it in your report
+    instead of running it. If you cannot run commands in this environment,
+    name the test you would run.
 
-    Warnings or other noise in the implementer's reported test output are
-    findings — test output should be pristine.
+    Warnings or other noise in the reported test output are findings — test
+    output should be pristine.
 
     ## Part 1: Spec Compliance
 
     Compare the diff against What Was Requested:
 
-    - **Missing:** requirements they skipped, missed, or claimed without
+    - **Missing:** requirements skipped, missed, or claimed without
       implementing
     - **Extra:** features that weren't requested, over-engineering, unneeded
       "nice to haves"
@@ -112,7 +107,7 @@ Subagent (general-purpose):
 
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
-    "yes." A tight report that cites lines gives the controller everything
+    "yes." A tight report that cites lines gives the main agent everything
     it needs.
 
     Your final message is the report itself: begin directly with the
@@ -128,13 +123,12 @@ Subagent (general-purpose):
     would block a merge over — verbatim duplication of a logic block,
     swallowed errors, tests that assert nothing. "Coverage could be broader"
     and polish suggestions are Minor.
-    If the plan or brief explicitly mandates something this rubric calls a
-    defect (a test that asserts nothing, verbatim duplication of a logic
-    block), that IS a finding — report it as Important, labeled
-    plan-mandated. The plan's authorship does not grade its own work; the
-    human decides.
+    If the plan explicitly mandates something this rubric calls a defect (a
+    test that asserts nothing, verbatim duplication of a logic block), that IS
+    a finding — report it as Important, labeled plan-mandated. The plan's
+    authorship does not grade its own work; the human decides.
     Acknowledge what was done well before listing issues — accurate praise
-    helps the implementer trust the rest of the feedback.
+    helps build trust in the rest of the feedback.
 
     ## Output Format
 
@@ -143,7 +137,7 @@ Subagent (general-purpose):
     - ✅ Spec compliant | ❌ Issues found: [what's missing/extra/misunderstood,
       with file:line references]
     - ⚠️ Cannot verify from diff: [requirements you could not verify from the
-      diff alone, and what the controller should check — report alongside the
+      diff alone, and what the main agent should check — report alongside the
       ✅/❌ verdict for everything you could verify]
 
     ### Strengths
@@ -167,22 +161,21 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
-- `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
-  prints the path; same file the implementer worked from)
+- `[TASK_REQUIREMENTS]` — REQUIRED: the task text from the plan (paste it, or
+  give the reviewer the plan path scoped to this task), with the exact values
+  to verify
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
   the plan's Global Constraints section or the spec: exact values, formats,
   and stated relationships between components (not process rules — those
   are already in this template)
-- `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
-  report to
 - `[BASE_SHA]` — commit before this task
 - `[HEAD_SHA]` — current commit
-- `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
-  package to (`scripts/review-package BASE HEAD` prints the unique path it
-  wrote; the package never enters the controller's context)
+- `[DIFF_FILE]` — REQUIRED: the path you wrote the review package to
+  (`scripts/review-package BASE HEAD` prints the unique path it wrote; the
+  package never enters your own context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
 (Critical/Important/Minor), Task quality verdict
 
-A fix dispatch can address spec gaps and quality findings together;
-re-review after fixes covers both verdicts.
+A fix pass can address spec gaps and quality findings together; re-review
+after fixes covers both verdicts.

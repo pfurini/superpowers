@@ -58,8 +58,8 @@ invoke it by the name you gave it. (`manage_subagents` lists/kills running
 subagents.)
 
 Skills dispatch with `Subagent (general-purpose):` and either reference a
-prompt-template file (e.g. `superpowers:subagent-driven-development`'s
-`./implementer-prompt.md`) or supply an inline prompt. On Antigravity:
+prompt-template file (e.g. `superpowers:executing-plans`'s
+`./task-reviewer-prompt.md`) or supply an inline prompt. On Antigravity:
 
 | Skill dispatch form | Antigravity equivalent |
 |---------------------|----------------------|

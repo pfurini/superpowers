@@ -14,10 +14,9 @@ Live in `tests/`. Currently:
 - `tests/codex-plugin-sync/` — bash sync verification.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-helpers.sh`, `analyze-token-usage.py` — utilities used by remaining bash tests.
-- `tests/claude-code/test-subagent-driven-development.sh` — agent-can-describe-SDD test (no drill counterpart; tests description-recall, not behavior).
-- `tests/claude-code/test-subagent-driven-development-integration.sh` — extended SDD integration with token analysis (drill covers the YAGNI subset; bash adds commit-count, Claude Code task-tracking, and token telemetry assertions).
+- `tests/claude-code/test-workspace.sh` — unit test for the `executing-plans` workspace helper: `scripts/workspace` resolves a self-ignoring `.superpowers/exec` dir and `scripts/review-package` writes its diff package there (per-worktree isolation included).
 - `tests/claude-code/test-worktree-native-preference.sh` — RED-GREEN-REFACTOR validation for worktree skill (drill covers the PRESSURE phase; bash also covers RED/GREEN baselines).
-- `tests/explicit-skill-requests/` — Haiku-specific, multi-turn, and skill-name-prompted tests not covered by drill.
+- `tests/explicit-skill-requests/` — multi-turn and skill-name-prompted skill-trigger tests not covered by drill.
 
 Run plugin tests via the relevant directory's `run-*.sh` or `npm test`.
 

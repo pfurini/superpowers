@@ -6,10 +6,12 @@ releases — see the upstream repository for those.
 
 Fork base: `896224c` (merge-base with `upstream/main`).
 
-All changes so far are skill-content only (`skills/`); no code, hooks, or configuration
-are modified. Together they form one coherent theme: hardening the
+The fork carries two themes. **(1)** Hardening the
 `brainstorming → writing-plans → using-git-worktrees` pipeline with a spec / glossary /
-ADR discipline and two worktree-timing fixes.
+ADR discipline and two worktree-timing fixes — skill-content only. **(2)** Reworking plan
+execution into a single main-agent path (`executing-plans`) and removing agent-driven
+development — this theme also touches `tests/`, `docs/`, and the plugin manifests, not
+just `skills/`.
 
 ## Unreleased (fork-local)
 
@@ -48,6 +50,20 @@ ADR discipline and two worktree-timing fixes.
 
 ### Changed
 
+- **`executing-plans` is now the single main-agent execution path** (2026-06-24).
+  Ported every durable mechanism out of the (now deleted) subagent-driven-development
+  path into `executing-plans`: the pre-flight plan-conflict scan, per-task self-review, a
+  mandatory per-task **read-only review gate** (fresh reviewer subagent → fix via
+  `receiving-code-review` → re-review until clean), ⚠️-item handling, the reviewer-prompt
+  construction discipline (copied verbatim), the durable progress ledger, model selection
+  scoped to review/research, and the final whole-branch review. Doctrine: the main agent
+  always writes; only read-only review/research is delegated to subagents. `writing-plans`
+  collapses from the SDD-or-inline execution choice to this single path. The review
+  artifacts moved under `skills/executing-plans/` (`task-reviewer-prompt.md` — adapted to
+  drop the implementer/report framing — plus `scripts/review-package` and
+  `scripts/workspace`), and the scratch dir was renamed `.superpowers/sdd` →
+  `.superpowers/exec`.
+
 - **Aligned ADR/glossary format docs with the OpenSpec `openspec-design` skill**
   (2026-06-23). Ported the CLI-independent refinements from `Fission-AI/OpenSpec`:
   - `ADR-FORMAT.md` — added a required `title` frontmatter field (mirrors the heading,
@@ -71,3 +87,17 @@ ADR discipline and two worktree-timing fixes.
   The worktree is now created before the first file write, so the entire feature loop
   (spec, glossary, ADRs, plan, code) lands inside the worktree rather than the current
   checkout. The `GLOSSARY.md` write is deferred until the worktree exists.
+
+### Removed
+
+- **`subagent-driven-development` and `dispatching-parallel-agents` skills** (2026-06-24).
+  Agent-driven (writing) development is gone — the main agent now does all writing. The
+  durable read-only mechanisms were ported into `executing-plans` (see Changed); the
+  no-longer-applicable pieces were dropped (implementer dispatch, `task-brief`,
+  implementer-status handling, parallel-implementer warnings). Updated every live
+  reference: `README.md`, `requesting-code-review`, the antigravity / codex / gemini tool
+  refs, `docs/porting-to-a-new-harness.md`, `docs/testing.md`, and the codex / kimi plugin
+  manifests. Removed the SDD test suite and the SDD-specific explicit-skill-request
+  prompts; repointed the workspace unit test and the multi-turn skill-trigger test to
+  `executing-plans`. (Dated historical plans/specs under `docs/` retain the old names as a
+  record.)
