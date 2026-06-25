@@ -162,7 +162,19 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
-If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+If you find issues, fix them inline. If you find a spec requirement with no task, add the task. This self-review is your first pass — the independent coverage review below is the gate.
+
+## Independent Coverage Review
+
+Your self-review is the author grading their own work: it catches the obvious gaps, not your blind spots, and it leans on the spec backbone. Before handoff, dispatch a fresh **read-only** reviewer to verify the plan covers the *entire* design — the spec backbone **and** the design sections (architecture, data model, data flow & error handling, file table, testing, rollback) — and is buildable. Writing stays with you: the reviewer only reads and reports; you fix.
+
+For any multi-task plan this review is mandatory. A trivial single-task plan whose self-review already showed full coverage may skip it — say so explicitly.
+
+Dispatch a `general-purpose` subagent, filling [plan-document-reviewer-prompt.md](plan-document-reviewer-prompt.md). Give it:
+- the plan file path and the design/spec file path (and the `GLOSSARY.md` / ADR paths if the plan honors any),
+- a model scaled to the plan's size and risk — a short plan does not need the most capable model; a broad multi-component plan does. Specify it explicitly, or it silently inherits your session's most expensive model.
+
+Act on the findings yourself, per superpowers:receiving-code-review (verify before changing; push back with reasoning if a finding is wrong). When the reviewer names a design element with no covering task, add the task. Re-dispatch a fresh reviewer after fixes until it returns **Approved**, then hand off.
 
 ## Execution Handoff
 

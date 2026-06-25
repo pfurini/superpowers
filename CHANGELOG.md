@@ -64,6 +64,17 @@ just `skills/`.
   `scripts/workspace`), and the scratch dir was renamed `.superpowers/sdd` →
   `.superpowers/exec`.
 
+- **`writing-plans` gains an independent design-coverage gate** (2026-06-25).
+  Wired the previously-orphaned `plan-document-reviewer-prompt.md` into `writing-plans` as
+  a mandatory read-only review after the author's self-review: a fresh subagent verifies
+  the plan covers the whole design before handoff, and the main agent fixes any gaps (per
+  `receiving-code-review`) and re-reviews until approved. Widened the reviewer's rubric
+  from the spec backbone (goals / acceptance criteria / non-goals / open questions) to the
+  design sections too (architecture & components, data model / API shapes, data flow &
+  error handling, file table, testing approach, rollback) — each design element must map
+  to a task or have its absence justified. Closes two gaps: plan-vs-design coverage was
+  previously self-review only, and scoped to the backbone rather than the full design.
+
 - **Aligned ADR/glossary format docs with the OpenSpec `openspec-design` skill**
   (2026-06-23). Ported the CLI-independent refinements from `Fission-AI/OpenSpec`:
   - `ADR-FORMAT.md` — added a required `title` frontmatter field (mirrors the heading,
