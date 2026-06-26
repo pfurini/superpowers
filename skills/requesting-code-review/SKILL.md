@@ -9,6 +9,8 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 
 **Core principle:** Review early, review often.
 
+**What review can't catch — don't use it as their safety net.** A confidently-wrong claim about how an external system/tool behaves, or a gate whose logic is plausible-but-wrong, survives review: a reviewer reasoning about the same prose reaches the same wrong conclusion the author did. Those are falsified by docs/source or a spike (external behavior) and by tracing the concrete failure scenario (logic) — *before* you request review, not by it (see brainstorming → *Falsify load-bearing claims before they harden*). Review is for consistency, quality, and spec-fit; it is not an oracle for boundary or logic claims.
+
 ## When to Request Review
 
 **Mandatory:**
@@ -91,6 +93,7 @@ You: [Fix progress indicators]
 - Ignore Critical issues
 - Proceed with unfixed Important issues
 - Argue with valid technical feedback
+- Lean on review to catch a boundary or logic claim — it can't falsify those; verify them yourself before requesting
 
 **If reviewer wrong:**
 - Push back with technical reasoning

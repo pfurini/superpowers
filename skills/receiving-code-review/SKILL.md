@@ -24,6 +24,8 @@ WHEN receiving code review feedback:
 6. IMPLEMENT: One item at a time, test each
 ```
 
+**VERIFY means the type-appropriate falsifier, not a glance.** A finding about how an external system/tool behaves → check the doc/source or spike it; about a gate's logic → trace the concrete failure scenario; about repo state → grep. Neither the reviewer's confidence nor yours is evidence — treating it as evidence is exactly how a wrong finding gets implemented and a right one gets dismissed.
+
 ## Forbidden Responses
 
 **NEVER:**
