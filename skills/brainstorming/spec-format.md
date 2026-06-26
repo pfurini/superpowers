@@ -52,7 +52,8 @@ assumption you're least sure of as a question; that's your weakest link.
 Layer these on when they carry weight — skip the ones that don't apply:
 
 - **Verified current state** — what exists today, cited by `path:line`, with a date if
-  it could drift. Verify; don't describe from memory.
+  it could drift. Produce it with a read-only codebase-grounding pass (see
+  [codebase-grounding.md](codebase-grounding.md)); verify, don't describe from memory.
 - **Architecture & components** — the units, each with one clear purpose, a defined
   interface, and named dependencies. Prefer smaller, well-bounded units.
 - **Data model / API shapes** — actual SQL, actual interfaces, actual request/response

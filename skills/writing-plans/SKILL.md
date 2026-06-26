@@ -55,7 +55,7 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
-**Mandatory reading for the executor.** If the plan leans on files the executor must read before Task 1 — a pattern to mirror, the types to import, a test to follow — list them once as a small table (*file / lines / why read*). It grounds the executor in real code instead of blind exploration, and it is where the per-task **Mirror** and **Imports** fields below come from.
+**Mandatory reading for the executor.** If the plan leans on files the executor must read before Task 1 — a pattern to mirror, the types to import, a test to follow — list them once as a small table (*file / lines / why read*). It grounds the executor in real code instead of blind exploration, and it is where the per-task **Mirror** and **Imports** fields below come from. Get those `file:line` references from a read-only codebase-grounding pass ([../brainstorming/codebase-grounding.md](../brainstorming/codebase-grounding.md)), not from memory.
 
 ## Task Right-Sizing
 
