@@ -45,6 +45,7 @@ For each task:
    - **Discipline:** did you avoid overbuilding (YAGNI)? Build only what was requested? Follow existing patterns?
    - **Testing:** do tests verify behavior, not mocks? Did you follow TDD if required? Is the test output pristine (no stray warnings or noise)?
    - **Falsification (integration tasks):** If the task rests on a claim about an external system/tool/platform, did you *verify* it (doc, source, or a quick spike) rather than trust the plan's wording? For any gate or conditional you wrote, trace the concrete scenario where it *must* fire and confirm it does — don't just re-read it. And if the change is a **no-oracle surface** (CI/workflow, release flow, infra-as-config), lint/type-green is **not** "done": its first real run is its first test, so a green run is part of completion — or a planned dry-run if it can't run before merge. Mark such surfaces *unproven until executed* in the ledger.
+   - **Done means exercised, not just green.** Before marking a task done: run the **negative paths** (invalid input, missing field, unauthorized, empty result, max-size) and confirm each fails predictably, not with a crash; for any runnable surface, exercise it once **outside the test harness** (run the binary, hit the endpoint, trigger the real job) — a passing unit test is not a real run; and **cross-check the ask** — re-read the task text and map each thing it asked for to where you addressed it, or why you deferred it.
 
    Fix anything you find now, before committing.
 4. **Commit** the task's work.
@@ -141,7 +142,10 @@ tasks, the single most expensive failure mode.
   task not marked complete.
 - When a task's review comes back clean, append one line to the ledger in the
   same message as your other bookkeeping:
-  `Task N: complete (commits <base7>..<head7>, review clean)`.
+  `Task N: complete (commits <base7>..<head7>, review clean) — verified: <what proves it, e.g. 14/14 + negative paths + ran the CLI>`.
+  Name what *proves* the task done, not just that it's done — a behavioral or
+  no-oracle check that lives only in your context is lost at compaction; in the
+  ledger it survives, and the final review can trust it.
 - The ledger is your recovery map: the commits it names exist in git even when
   your context no longer remembers creating them. After compaction, trust the
   ledger and `git log` over your own recollection.
@@ -159,6 +163,12 @@ tasks, the single most expensive failure mode.
 **Ask for clarification rather than guessing.** When the blocker is "I don't
 understand this code well enough," a read-only research sub-agent is a valid
 move — but you still write the fix.
+
+**When the blocker is a bug, a test failure, or unexpected behavior, invoke
+superpowers:systematic-debugging** — find the root cause before you fix anything.
+A patch that doesn't understand the cause usually just creates the next blocker.
+Don't change the same line three different ways hoping one sticks; that's the
+signal to stop and root-cause it.
 
 ## When to Revisit Earlier Steps
 
@@ -197,6 +207,7 @@ move — but you still write the fix.
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code reviewer template for the final whole-branch review
+- **superpowers:requesting-code-review** - Code reviewer template for the final whole-branch review (incl. the optional Codex cross-model adversarial pass)
 - **superpowers:receiving-code-review** - How to act on review findings (verify, don't perform agreement)
+- **superpowers:systematic-debugging** - Root-cause a bug / test-failure blocker before fixing it
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
