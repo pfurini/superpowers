@@ -1,13 +1,17 @@
-# Plan Document Reviewer Prompt Template
+# Plan Reviewer — Coverage Lens
 
-Use this template when dispatching a read-only plan document reviewer subagent.
-The reviewer reads the plan and the design it came from, and verifies the plan
-covers the entire design and is buildable. It does not edit anything — you act
-on its findings.
+One of up to three read-only plan-review lenses (coverage / architecture /
+experience). This lens checks **completeness in both directions**: the plan
+covers everything the design asks for, and adds nothing it didn't. It does not
+edit anything — you (the main agent) act on its findings and consolidate them
+with the other lenses.
 
 **Purpose:** Verify the plan covers everything in the design (the spec backbone
-AND the design sections), decomposes cleanly, and could be built without getting
-stuck.
+AND the design sections), adds no unasked work, decomposes cleanly, and could be
+built without getting stuck.
+
+**Always dispatched** (the architecture and experience lenses are conditional on
+plan shape; coverage applies to every plan).
 
 **Dispatch after:** the complete plan is written and self-reviewed.
 
@@ -38,6 +42,7 @@ Subagent (general-purpose):
     | Acceptance criteria | Each criterion has a named verification somewhere in the plan — an existing test/E2E, the type-checker, or a documented manual check all count (not necessarily a *new* test). |
     | Non-goals | No task implements a non-goal (scope creep). |
     | Open questions | No load-bearing open question is silently planned around. |
+    | Reverse drift | Flag any task that implements something **no** goal, criterion, or design element asked for — gold-plating the design didn't request. Coverage runs both ways: design→task (gaps) and task→design (unasked work). |
 
     ### 2. Design section coverage
 

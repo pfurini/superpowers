@@ -195,17 +195,29 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. If you find a spec requirement with no task, add the task. This self-review is your first pass — the independent coverage review below is the gate.
 
-## Independent Coverage Review
+## Plan Review
 
-Your self-review is the author grading their own work: it catches the obvious gaps, not your blind spots, and it leans on the spec backbone. Before handoff, dispatch a fresh **read-only** reviewer to verify the plan covers the *entire* design — the spec backbone **and** the design sections (architecture, data model, data flow & error handling, file table, testing, rollback) — and is buildable. Writing stays with you: the reviewer only reads and reports; you fix.
+Your self-review is the author grading their own work: it catches the obvious gaps, not your blind spots. Before handoff, gate the plan behind a fresh **read-only** review. Independence is the value — the reviewers only read and report; *you* write every fix and consolidate the findings.
 
-For any multi-task plan this review is mandatory. A trivial single-task plan whose self-review already showed full coverage may skip it — say so explicitly.
+The review has up to three lenses, dispatched as parallel read-only sub-agents. They are orthogonal: a plan can cover the whole design (coverage) yet be unsound (architecture) or unusable (experience). Pick the lenses the plan's shape warrants:
 
-Dispatch a `general-purpose` subagent, filling [plan-document-reviewer-prompt.md](plan-document-reviewer-prompt.md). Give it:
-- the plan file path and the design/spec file path (and the `GLOSSARY.md` / ADR paths if the plan honors any),
-- a model scaled to the plan's size and risk — a short plan does not need the most capable model; a broad multi-component plan does. Specify it explicitly, or it silently inherits your session's most expensive model.
+- **Coverage** — [plan-reviewer-coverage.md](plan-reviewer-coverage.md). Does the plan cover the whole design, and add nothing it didn't? **Always dispatched.**
+- **Architecture** — [plan-reviewer-architecture.md](plan-reviewer-architecture.md). Will it work — data flow, failure modes, edge cases, test matrix, rollback? Dispatch **only when the plan has real integration or state** (external calls, shared state, concurrency, migrations, ordered deploy).
+- **Experience** — [plan-reviewer-experience.md](plan-reviewer-experience.md). Will anyone want to use it, and can a human operate it — across UI, CLI, API, and agent surfaces? Dispatch **only when the plan has a consumer-facing surface.**
 
-Act on the findings yourself, per superpowers:receiving-code-review (verify before changing; push back with reasoning if a finding is wrong). When the reviewer names a design element with no covering task, add the task. Re-dispatch a fresh reviewer after fixes until it returns **Approved**, then hand off.
+Decide which lenses apply before dispatching; don't run a lens that would score every dimension `n/a` (ceremony the agent learns to skip). A trivial single-task plan whose self-review already showed full coverage may run coverage alone, or skip the review — say which, explicitly.
+
+Give each lens the plan file path and the design/spec path (plus `GLOSSARY.md` / ADR paths if the plan honors them), and a model scaled to the plan's size and risk — specify it explicitly, or it silently inherits your session's most expensive model.
+
+**Consolidate the findings yourself** — this is writing, so it stays on the main agent:
+
+1. Merge all findings into one list; **tag each by source** `[coverage]` / `[arch]` / `[exp]`. A finding two lenses both raise becomes `[both]` and ranks higher — independent agreement is signal.
+2. Rank every finding **Blocker** (the plan can't execute, or executes into a wrong/unsafe result) / **Important** (executes but regrettable) / **Nice** (clarity only). A dimension a lens scored ≤4 is almost always a Blocker.
+3. For each Blocker, decide with your human partner: **apply the fix**, or **skip it with a one-line written rationale carried into the plan**. A skipped Blocker with no recorded rationale is how a review silently becomes advisory — the rationale is the receipt.
+4. Apply fixes yourself, per superpowers:receiving-code-review (verify before changing; push back with reasoning if a finding is wrong). When a lens names a design element with no covering task, add the task.
+5. **Re-read the whole plan** after surgical edits — fixes drift: a renumbered task breaks a `Blocked by: Task 4` reference, a deleted task strands an interface. Then re-dispatch the applicable lenses until they come back clean.
+
+Calibration guard: if every lens scores everything 9-10, the review was lazy — re-dispatch with sharper instruction. If you find yourself skipping every Blocker, you have the wrong lenses or the wrong plan; stop and reconsider.
 
 ## Execution Handoff
 
