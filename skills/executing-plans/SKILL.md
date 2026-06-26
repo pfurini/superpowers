@@ -57,6 +57,7 @@ After all tasks are complete and verified, run one broad review of the whole bra
 
 - Generate the review package for the full branch: run this skill's `scripts/review-package MERGE_BASE HEAD`, where MERGE_BASE is the commit the branch started from (e.g. `git merge-base main HEAD`). It prints the unique file path it wrote. Without bash, write the package yourself: `git log --oneline`, `git diff --stat`, and `git diff -U10` for the range, redirected to one uniquely named file.
 - Dispatch a read-only final code reviewer using superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md) template, on the most capable available model. Include the review-package path and the rolled-up Minor findings from the ledger so the reviewer can triage which must be fixed before merge.
+- **Optionally** also run a Codex cross-model adversarial review over the branch (`--base "$(git merge-base main HEAD)"`) — see superpowers:requesting-code-review's [codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md). A different model catches what the in-model reviewer's blind spots share with the author's; consolidate its `[codex]` findings with the final reviewer's (a finding both raise is the strongest signal). Degradable — skip it when Codex isn't installed.
 - If the review returns findings, fix them all yourself in one pass (per superpowers:receiving-code-review), re-run the covering tests, and record the results. Do not spread the fixes across many context rebuilds.
 
 ### Step 4: Complete Development

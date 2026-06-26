@@ -204,6 +204,7 @@ The review has up to three lenses, dispatched as parallel read-only sub-agents. 
 - **Coverage** — [plan-reviewer-coverage.md](plan-reviewer-coverage.md). Does the plan cover the whole design, and add nothing it didn't? **Always dispatched.**
 - **Architecture** — [plan-reviewer-architecture.md](plan-reviewer-architecture.md). Will it work — data flow, failure modes, edge cases, test matrix, rollback? Dispatch **only when the plan has real integration or state** (external calls, shared state, concurrency, migrations, ordered deploy).
 - **Experience** — [plan-reviewer-experience.md](plan-reviewer-experience.md). Will anyone want to use it, and can a human operate it — across UI, CLI, API, and agent surfaces? Dispatch **only when the plan has a consumer-facing surface.**
+- **Cross-model (optional)** — [../requesting-code-review/codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md). A Codex (different-model) adversarial pass over the plan. The strongest *independent* lens — a different model has different blind spots — but degradable: skip it when Codex isn't installed. Use the plan focus text from that reference.
 
 Decide which lenses apply before dispatching; don't run a lens that would score every dimension `n/a` (ceremony the agent learns to skip). A trivial single-task plan whose self-review already showed full coverage may run coverage alone, or skip the review — say which, explicitly.
 
@@ -211,7 +212,7 @@ Give each lens the plan file path and the design/spec path (plus `GLOSSARY.md` /
 
 **Consolidate the findings yourself** — this is writing, so it stays on the main agent:
 
-1. Merge all findings into one list; **tag each by source** `[coverage]` / `[arch]` / `[exp]`. A finding two lenses both raise becomes `[both]` and ranks higher — independent agreement is signal.
+1. Merge all findings into one list; **tag each by source** `[coverage]` / `[arch]` / `[exp]` / `[codex]`. A finding two lenses both raise becomes `[both]` and ranks higher — independent agreement is signal, and cross-model agreement (an in-model lens and `[codex]`) is the strongest signal of all.
 2. Rank every finding **Blocker** (the plan can't execute, or executes into a wrong/unsafe result) / **Important** (executes but regrettable) / **Nice** (clarity only). A dimension a lens scored ≤4 is almost always a Blocker.
 3. For each Blocker, decide with your human partner: **apply the fix**, or **skip it with a one-line written rationale carried into the plan**. A skipped Blocker with no recorded rationale is how a review silently becomes advisory — the rationale is the receipt.
 4. Apply fixes yourself, per superpowers:receiving-code-review (verify before changing; push back with reasoning if a finding is wrong). When a lens names a design element with no covering task, add the task.

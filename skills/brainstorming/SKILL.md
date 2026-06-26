@@ -164,7 +164,15 @@ After writing the spec document, look at it with fresh eyes:
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
 5. **Claims discharged (integration-heavy designs):** Does any load-bearing claim about an external system, a gate's behavior, or the repo's state still rest on memory? Each should be cited (doc/source), traced (failure scenario), grepped, or listed in the Boundary-assumptions block for the plan to spike. An internal-consistency pass won't catch a confidently-wrong external claim — that's why this is a separate check.
 
-Fix any issues inline. No need to re-review — just fix and move on.
+Fix any issues inline. This is your first pass — the independent spec review below is the gate.
+
+**Independent Spec Review:**
+Your self-review is the author checking their own work; it misses your blind spots. Before the user gate, dispatch a fresh **read-only** reviewer — writing stays with you, the reviewer only reads and reports:
+
+- **In-model** — fill [spec-document-reviewer-prompt.md](spec-document-reviewer-prompt.md) and dispatch a `general-purpose` subagent with the spec path, on a model scaled to the spec's size.
+- **Cross-model (optional, strongest)** — also run a Codex adversarial pass over the spec, using the design focus text in [../requesting-code-review/codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md). A different model breaks the blind spots a same-model reviewer shares; degradable — skip it when Codex isn't installed.
+
+Consolidate the findings yourself, per superpowers:receiving-code-review: fix the real issues (a finding both reviewers raise is high-signal), push back on the wrong ones, and re-review after fixes until clean. For a trivial change the in-model pass alone is enough, and a change that produced no spec worth reviewing may skip it — say so.
 
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
