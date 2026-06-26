@@ -17,6 +17,30 @@ just `skills/`.
 
 ### Added
 
+- **Cross-model adversarial review via the `codex` CLI** (`a869862`, 2026-06-26).
+  A self-contained read-only adversarial reviewer that shells out to `codex exec`
+  (read-only sandbox, `--output-schema`) for a *different-model* pass over a spec,
+  plan, or code diff: `skills/requesting-code-review/scripts/codex-review --kind
+  spec|plan|code …` returns structured JSON findings, consolidated as `[codex]`.
+  Depends only on the `codex` CLI on PATH (no third-party plugin), works from any
+  shell-capable agent, and degrades to a skip when absent. Wired as an optional
+  lens into the brainstorming spec review, the writing-plans plan review, and the
+  executing-plans final review. (Landed plugin-based at `41c9e07`, then ported to
+  the CLI-only mechanism.)
+
+- **Read-only codebase-grounding pass** (`d28a55b`, 2026-06-25).
+  `skills/brainstorming/codebase-grounding.md`: scope → entry points → trace &
+  read → present-tense `file:line` artifact ("grep finds where, reading confirms
+  what"). The mechanism brainstorming's "verified current state" and
+  writing-plans' "mandatory reading" / per-task Mirror & Imports now draw from,
+  instead of memory. Delegable as a read-only sub-agent.
+
+- **Per-task executable context in plans** (`6ab9557`, 2026-06-25).
+  The `writing-plans` task template gains optional `Mirror` (paste the exemplar +
+  tag `path:line`), `Imports & gotchas`, and `Validate` (a task-level command),
+  plus a plan-level "mandatory reading" table — context travels with each task so
+  the executor doesn't re-derive it mid-flight.
+
 - **Spec / glossary / ADR discipline in `brainstorming`** (`8fc21f7`, 2026-06-07).
   Four new reference docs under `skills/brainstorming/`:
   - `spec-format.md` — mandatory spec backbone (one-line summary, goals, non-goals,
@@ -49,6 +73,32 @@ just `skills/`.
   prompt updated to match.
 
 ### Changed
+
+- **Plan review is now multi-lens** (`a955187`, 2026-06-25).
+  Generalizes the earlier single design-coverage gate into three orthogonal
+  read-only lenses — **coverage** (always; now bidirectional, also flagging
+  gold-plating), **architecture** (conditional on real integration/state), and
+  **experience** (conditional on a consumer surface) — scored with 0/5/10 anchors,
+  then consolidated on the main agent (`[both]` / cross-model agreement ranks
+  higher, Blocker/Important/Nice, forced skip-rationale, post-edit re-read). Lens
+  prompt templates live beside `writing-plans`.
+
+- **`brainstorming` gains an independent spec review** (`41c9e07`, 2026-06-26).
+  Un-orphans the in-model `spec-document-reviewer` and adds the optional Codex
+  cross-model pass between the spec self-review and the user gate; brainstorming
+  previously had no independent spec review at all.
+
+- **`writing-plans` risk and confidence discipline** (`6ab9557`, 2026-06-25).
+  A `Risks and Rollback` section (author-written one-line rollback per risky task;
+  irreversible → `NOT POSSIBLE` + flag for the architecture review), a one-pass
+  confidence score in self-review, and task-count size signals (under ~3 tasks =
+  a TODO; over ~30 = split or fold).
+
+- **`executing-plans` execution discipline** (`3fffdea`, 2026-06-26).
+  Blockers route to `systematic-debugging` (root-cause before fixing); the
+  done-check goes beyond green tests (negative paths, a real run outside the test
+  harness, cross-check the ask against the task text); and the progress-ledger
+  entry names what *proves* a task done, so the evidence survives compaction.
 
 - **`executing-plans` is now the single main-agent execution path** (2026-06-24).
   Ported every durable mechanism out of the (now deleted) subagent-driven-development
