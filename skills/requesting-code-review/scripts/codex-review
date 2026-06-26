@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Cross-model adversarial review via the `codex` CLI — no plugin required.
+#
+# Shells out to `codex exec` (headless) with a read-only sandbox and a JSON
+# output schema, so a *different* model (Codex / GPT-5.x) adversarially reviews a
+# spec, a plan, or a code diff and returns structured findings on stdout. Depends
+# only on `codex` being installed and on PATH (plus `git` for code diffs). Works
+# from any agent that can run a shell.
+#
+# Usage:
+#   codex-review --kind spec|plan --file <path> [--focus "..."] [--model M]
+#   codex-review --kind code [--base <ref>] [--focus "..."] [--model M]
+#
+# Output: JSON matching codex-review.schema.json (verdict / summary / findings[] /
+#   next_steps) on stdout. Exit codes: 0 = review produced; 2 = bad usage;
+#   3 = codex CLI not found (caller should degrade and skip the cross-model pass).
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PROMPT_TEMPLATE="$HERE/codex-review-prompt.md"
+SCHEMA="$HERE/codex-review.schema.json"
+
+kind="" file="" base="" focus="" model=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kind)  kind="$2"; shift 2 ;;
+    --file)  file="$2"; shift 2 ;;
+    --base)  base="$2"; shift 2 ;;
+    --focus) focus="$2"; shift 2 ;;
+    --model) model="$2"; shift 2 ;;
+    -h|--help)
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "codex-review: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+[ -n "$kind" ] || { echo "codex-review: --kind is required (spec|plan|code)" >&2; exit 2; }
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "codex CLI not found on PATH — skip the cross-model review (degradable)" >&2
+  exit 3
+fi
+
+# Build the review input and the dynamic header (kind label + attack surface).
+case "$kind" in
+  spec|plan)
+    [ -n "$file" ] || { echo "codex-review: --kind $kind needs --file <path>" >&2; exit 2; }
+    [ -f "$file" ] || { echo "codex-review: no such file: $file" >&2; exit 2; }
+    # Number every line so findings can cite line ranges precisely.
+    input="$(awk '{ printf "%6d\t%s\n", NR, $0 }' "$file")"
+    label="a $kind DOCUMENT (\`$file\`), not application code"
+    if [ "$kind" = spec ]; then
+      attack="Weight: attack the design's soundness — vague or unfalsifiable acceptance criteria, unstated assumptions, failure modes it ignores, missing scope bounds / non-goals, hidden dependencies, and decisions that won't survive real-world load."
+    else
+      attack="Weight: attack the plan's executability — design-coverage gaps, tasks that cannot be executed as written, missing failure/edge handling, ordering and dependency hazards, missing rollback, and unverified boundary assumptions."
+    fi
+    ;;
+  code)
+    if [ -n "$base" ]; then
+      input="$(git diff "$base"...HEAD)"
+    else
+      input="$(git diff --cached; git diff)"
+    fi
+    [ -n "$input" ] || { echo "codex-review: empty code diff (nothing to review)" >&2; exit 2; }
+    label="a CODE CHANGE (git diff)"
+    attack="Weight: prioritize expensive, dangerous, hard-to-detect failures — auth / permissions / trust boundaries; data loss, corruption, irreversible state; rollback safety, retries, partial failure, idempotency; races, ordering, stale state; empty / null / timeout / degraded-dependency behavior; version skew, schema drift, migration hazards; observability gaps that hide failure."
+    ;;
+  *)
+    echo "codex-review: --kind must be spec, plan, or code" >&2; exit 2 ;;
+esac
+
+# Compose the prompt: dynamic header + the fixed adversarial instructions.
+header="The material under review is ${label}.
+${attack}"
+[ -n "$focus" ] && header="${header}
+User focus (weight heavily): ${focus}"
+prompt="${header}
+
+$(cat "$PROMPT_TEMPLATE")"
+
+outfile="$(mktemp -t codex-review.XXXXXX)"
+trap 'rm -f "$outfile"' EXIT
+
+model_args=()
+if [ -n "$model" ]; then
+  [ "$model" = spark ] && model="gpt-5.3-codex-spark"
+  model_args=(--model "$model")
+fi
+
+# Headless, read-only, schema-constrained. The review material is piped on stdin
+# (codex appends it as a <stdin> block); the final JSON lands in $outfile.
+printf '%s' "$input" | codex exec \
+  --color never \
+  --sandbox read-only \
+  --skip-git-repo-check \
+  --ephemeral \
+  "${model_args[@]}" \
+  --output-schema "$SCHEMA" \
+  --output-last-message "$outfile" \
+  "$prompt" >/dev/null
+
+if [ ! -s "$outfile" ]; then
+  echo "codex-review: codex produced no output (auth or run error — check \`codex login status\`)" >&2
+  exit 1
+fi
+cat "$outfile"

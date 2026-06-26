@@ -170,7 +170,7 @@ Fix any issues inline. This is your first pass — the independent spec review b
 Your self-review is the author checking their own work; it misses your blind spots. Before the user gate, dispatch a fresh **read-only** reviewer — writing stays with you, the reviewer only reads and reports:
 
 - **In-model** — fill [spec-document-reviewer-prompt.md](spec-document-reviewer-prompt.md) and dispatch a `general-purpose` subagent with the spec path, on a model scaled to the spec's size.
-- **Cross-model (optional, strongest)** — also run a Codex adversarial pass over the spec, using the design focus text in [../requesting-code-review/codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md). A different model breaks the blind spots a same-model reviewer shares; degradable — skip it when Codex isn't installed.
+- **Cross-model (optional, strongest)** — also run a Codex adversarial pass over the spec: the `codex-review` script with `--kind spec --file <spec>`, per [../requesting-code-review/codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md). A different model breaks the blind spots a same-model reviewer shares. It needs only the `codex` CLI on PATH (no plugin), and degrades to a skip when absent.
 
 Consolidate the findings yourself, per superpowers:receiving-code-review: fix the real issues (a finding both reviewers raise is high-signal), push back on the wrong ones, and re-review after fixes until clean. For a trivial change the in-model pass alone is enough, and a change that produced no spec worth reviewing may skip it — say so.
 

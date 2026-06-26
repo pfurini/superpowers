@@ -1,57 +1,49 @@
 # Cross-Model Adversarial Review (Codex)
 
-A read-only review by a *different model* — Codex (GPT-5.x) through the installed
-`codex` plugin. Same-model review shares the author's blind spots: a Claude
-reviewer reasoning over a Claude-authored spec/plan/diff can reach the same wrong
-conclusion the author did. A different model breaks that correlation, so this is
-the strongest independent pass available. It is **read-only** — Codex reports,
-you write every fix — so it fits the doctrine like any other delegated review.
+A read-only review by a *different model* — Codex (GPT-5.x) via the `codex` CLI.
+Same-model review shares the author's blind spots: a Claude reviewer reasoning
+over a Claude-authored spec/plan/diff can reach the same wrong conclusion the
+author did. A different model breaks that correlation, so this is the strongest
+independent pass available. It is **read-only** (Codex runs in a read-only
+sandbox and only reports; you write every fix), so it fits the doctrine like any
+delegated review.
 
-**Optional and degradable.** It needs the `codex` plugin installed and the Codex
-CLI set up. If either is missing, skip it and rely on the in-model lenses —
-never block on it. The discovery command below printing nothing means
-unavailable.
+**Self-contained — no plugin.** This uses this skill's `scripts/codex-review`,
+which shells out to `codex exec` directly. The only requirement is the `codex`
+CLI installed and on `PATH` (plus `git` for code diffs). It works from any agent
+that can run a shell — Claude Code, Cursor, others.
+
+**Optional and degradable.** If `codex` isn't on `PATH`, the script exits `3`
+with a skip notice — treat that as "no cross-model pass available" and rely on
+the in-model lenses. Never block on it. (First-time setup, if needed:
+`npm install -g @openai/codex` then `codex login`.)
 
 ## Invoke it
 
-Discover the companion script (version-independent — it self-resolves its own
-paths, so no plugin env vars are needed) and run the adversarial review:
-
 ```bash
-SCRIPT=$(find "$HOME/.claude/plugins" -path '*openai-codex*' -name codex-companion.mjs 2>/dev/null | sort -V | tail -1)
-[ -z "$SCRIPT" ] && { echo "Codex plugin not installed — skip the cross-model pass"; exit 0; }
-node "$SCRIPT" adversarial-review [--base <ref>] "<FOCUS TEXT>"
+# Design / spec review (brainstorming):
+skills/requesting-code-review/scripts/codex-review --kind spec --file docs/superpowers/specs/<file>.md
+
+# Plan review (writing-plans):
+skills/requesting-code-review/scripts/codex-review --kind plan --file docs/superpowers/plans/<file>.md
+
+# Code review (executing-plans final gate):
+skills/requesting-code-review/scripts/codex-review --kind code --base "$(git merge-base main HEAD)"
 ```
 
-- **Scope.** The review is git-diff-scoped and **counts untracked files**. For a
-  spec or plan you just wrote (uncommitted), omit `--base` — the default
-  working-tree scope picks the new file up. For committed work (the
-  executing-plans code gate), pass the branch base: `--base "$(git merge-base main HEAD)"`.
-- **`<FOCUS TEXT>`** steers Codex's (code-shaped) adversarial prompt onto the
-  artifact — say what kind of artifact it is and what to attack. Templates below.
-- **Output.** JSON on stdout: `verdict` (approve | needs-attention), `summary`,
-  `findings[]` (`severity` / `file` / `line_start` / `line_end` / `confidence` /
-  `recommendation`), `next_steps`.
-- **Slow runs.** A Codex review can take minutes. For anything beyond a tiny
-  artifact, launch it with `run_in_background: true` and collect the result with
-  `node "$SCRIPT" status` / `node "$SCRIPT" result` (or `/codex:status`). Don't
-  block a turn waiting on a large review.
-
-## Focus text per artifact
-
-- **Design / spec** (brainstorming): "The change under review is a DESIGN SPEC
-  document (`docs/superpowers/specs/…`), not application code. Attack the design:
-  vague or unfalsifiable acceptance criteria, unstated assumptions, failure modes
-  it ignores, missing scope bounds / non-goals, hidden dependencies, and
-  decisions that won't survive real-world load. Cite the spec's line ranges."
-- **Plan** (writing-plans): "The change under review is an IMPLEMENTATION PLAN
-  (`docs/superpowers/plans/…`), not application code. Attack the plan:
-  design-coverage gaps, tasks that can't be executed as written, missing
-  failure/edge handling, ordering and dependency hazards, missing rollback, and
-  unverified boundary assumptions. Cite the plan's line ranges."
-- **Code** (executing-plans gate): no doc framing needed — Codex's default attack
-  surface (auth, data loss, races, rollback, idempotency, schema drift) already
-  fits a code diff. Add a task-specific focus only if one applies.
+- `--kind` bakes in the right attack framing (a spec is attacked for unfalsifiable
+  criteria and missing failure modes; a plan for coverage gaps and infeasible
+  tasks; code for auth / data-loss / races / rollback). Add `--focus "<text>"`
+  only for extra project-specific weighting, and `--model <m>` to pin a model.
+- The script is **synchronous** — it blocks until Codex finishes (a real review
+  takes a minute or two, ~15-20k tokens for a small artifact). For a large
+  artifact, launch it with `run_in_background: true` and read its output when it
+  completes; there are no jobs to poll.
+- **Output** (stdout): JSON matching `scripts/codex-review.schema.json` —
+  `verdict` (`approve` | `needs-attention`), `summary`, `findings[]` (`severity`
+  / `title` / `body` / `file` / `line_start` / `line_end` / `confidence` /
+  `recommendation`), `next_steps`. For a document, findings cite its line
+  numbers; for code, the diff's file and lines.
 
 ## Consolidate its findings
 
