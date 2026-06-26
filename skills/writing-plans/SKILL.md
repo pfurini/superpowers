@@ -55,6 +55,8 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+**Mandatory reading for the executor.** If the plan leans on files the executor must read before Task 1 — a pattern to mirror, the types to import, a test to follow — list them once as a small table (*file / lines / why read*). It grounds the executor in real code instead of blind exploration, and it is where the per-task **Mirror** and **Imports** fields below come from.
+
 ## Task Right-Sizing
 
 A task is the smallest unit that carries its own test cycle and is worth a
@@ -63,6 +65,8 @@ configuration, scaffolding, and documentation steps into the task whose
 deliverable needs them; split only where a reviewer could meaningfully
 reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
+
+Rough size signals: a plan under ~3 tasks is usually a TODO, not a plan; over ~30 tasks means the spec is too big (split it into sub-project plans) or the tasks are too small (fold setup/scaffolding into the deliverable that needs them).
 
 ## Bite-Sized Task Granularity
 
@@ -114,6 +118,11 @@ include this section.]
   and return types. A task's implementer sees only their own task; this
   block is how they learn the names and types neighboring tasks use.]
 
+**Context (fill the lines that carry weight; omit the ones that don't):**
+- **Mirror:** `path/to/exemplar.py:40-58` — the existing pattern this task copies. Paste the actual snippet and tag the source; reuse the codebase's convention instead of inventing one.
+- **Imports & gotchas:** the exact import lines (with any quirks, e.g. `from zod/v4`) and the one pitfall that will bite — e.g. "use `results[0]`, not `.first()`".
+- **Validate:** one command that confirms the whole task beyond its unit test — a type-check, lint, or focused run (e.g. `tsc --noEmit`). The cheapest layer that proves the task landed.
+
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -163,6 +172,10 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Exact commands with expected output
 - DRY, YAGNI, TDD, frequent commits
 
+## Risks and Rollback
+
+For every task that touches production data, a shared schema, a public API contract, or an ordered multi-service deploy, write a one-line **rollback** — how to undo it — into the task. You authored the change, so you know *what* to undo; whoever runs the rollback later only knows *how*. If a task is irreversible (a destructive migration, a dropped column), write `Rollback: NOT POSSIBLE` and flag it for the architecture review — an irreversible step is safer reshaped behind a flag, dual-write, or backfill. A task whose risk you can't state a rollback for is a task whose risk you don't yet understand.
+
 ## Self-Review
 
 After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
@@ -177,6 +190,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**4. One-pass confidence.** State a confidence (1-10) that an executor with no prior context could build this plan in one pass, plus a one-line rationale. Below ~7, the gap is yours to close *now* — usually a missing **Mirror**, **Imports**, or **gotcha**, or an unresolved open question — not the executor's to discover mid-task.
 
 If you find issues, fix them inline. If you find a spec requirement with no task, add the task. This self-review is your first pass — the independent coverage review below is the gate.
 
