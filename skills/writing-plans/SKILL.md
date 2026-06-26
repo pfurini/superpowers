@@ -29,6 +29,21 @@ Before decomposing, read the project's architecture decision records (`docs/adr/
 - **Don't contradict an ADR.** Carry the spec's ADR references into the tasks that touch those decisions. Where the project cites ADRs inline in code (e.g. `// ADR-0006: …`), include the citation in the implementation step.
 - **Use canonical terms.** Name types, tables, functions, and variables with the glossary's English identifiers — don't reintroduce the fuzzy synonyms the spec already sharpened away. Consistent names from spec → plan → code keep the three in sync.
 
+## De-risk first: spike the unverified before you plan around it
+
+If the spec carries a **Boundary assumptions** block — or the design rests on any unverified claim about an external system, tool, or platform — the plan's **first phase is spikes, not implementation.** A spike's *result changes the plan*; running it after the plan is committed is too late (the wrong choice is already baked in). For each open assumption, write a Phase-0 task whose deliverable is a yes/no answer:
+
+- a 5-minute experiment — run the tool/flag/action once, write one throwaway test of the harness behavior, probe the API — or
+- read the authoritative doc/source and cite it (`URL` / `path:line`).
+
+Then decompose the implementation **on the spike's outcome**, not the assumption. (One-line spikes that would have pre-empted real post-merge failures: a release action that aborts on a tagless repo; a CI step whose output filename collided with a config file; a "no-op under test" import that actually throws.)
+
+**Cold-start gets its own tasks.** For every required check, moving/channel tag, generated secret, or first build/release, add an explicit first-run/bootstrap task and document the order — the steady-state task never covers the run where the thing doesn't yet exist (e.g. a required status check can't be marked required until it has reported once).
+
+**Tag any task whose correctness rests on an unverified boundary fact**, so the reviewer knows what to distrust. Review confirms internal consistency, not that an external system behaves as the task assumes.
+
+This whole section is conditional on integration surface — a pure app-logic plan with a test oracle skips it.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
@@ -155,6 +170,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **1. Spec coverage.** Check the plan against the spec's goals, acceptance criteria, non-goals, and open questions:
 - **Goals / requirements** — can you point to a task that implements each? List any gaps.
 - **Acceptance criteria → validation map** — give each criterion a named verification at the *cheapest* layer that already confirms it: an existing test or E2E, the type-checker, or a documented manual check all count. Coverage is collective — one assertion or one existing run can satisfy several criteria. Add a *new* test only for a criterion nothing already proves (TDD governs that new behavior inside its task). Never assume one criterion = one new test. When the criteria are few this is a mental check; when there are enough to lose track, write the map into the plan as a small table (*criterion / how verified / new or existing*).
+  - **Classify the oracle, and flag the criteria nothing executable can prove.** Some surfaces — CI workflows, the release flow, infra-as-config — have *no* oracle: lint/type-check/review confirm syntax, never behavior, and their *first real run is their first test*. For each such criterion the validation is a **deliberate dry-run task** (exercise it on a throwaway basis before first real use), and the plan must label the surface **unproven until executed** instead of implying a test covers it. This is exactly where escaped defects cluster — don't let "reviewed" read as "proven" for a path no test touches.
 - **Non-goals** — confirm no task implements one; that's scope creep.
 - **Open questions** — confirm none that are load-bearing remain unresolved. If one blocks a task, surface it rather than planning around it.
 

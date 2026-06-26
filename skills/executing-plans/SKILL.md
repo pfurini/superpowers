@@ -30,7 +30,7 @@ Execute a written plan on the main agent: load it, review it critically, then fo
    before execution begins, not one interrupt per discovery mid-plan. If the
    scan is clean, proceed without comment. The review loop remains the net for
    conflicts that only emerge from implementation.
-3. Review critically — identify any other questions or concerns. If concerns: raise them with your human partner before starting.
+3. Review critically — identify any other questions or concerns. If concerns: raise them with your human partner before starting. If the plan rests on **undischarged boundary assumptions** (a claim about an external system/tool with no spike or citation behind it), treat that as a blocker like any other — spike or cite it before building on it; don't inherit an unverified assumption as fact.
 4. Create todos for the plan items, start the progress ledger (see **Durable Progress**), and proceed.
 
 ### Step 2: Execute Tasks
@@ -44,6 +44,7 @@ For each task:
    - **Quality:** is this your best work? Are names clear and accurate (match what things do, not how they work)? Is the code clean and maintainable?
    - **Discipline:** did you avoid overbuilding (YAGNI)? Build only what was requested? Follow existing patterns?
    - **Testing:** do tests verify behavior, not mocks? Did you follow TDD if required? Is the test output pristine (no stray warnings or noise)?
+   - **Falsification (integration tasks):** If the task rests on a claim about an external system/tool/platform, did you *verify* it (doc, source, or a quick spike) rather than trust the plan's wording? For any gate or conditional you wrote, trace the concrete scenario where it *must* fire and confirm it does — don't just re-read it. And if the change is a **no-oracle surface** (CI/workflow, release flow, infra-as-config), lint/type-green is **not** "done": its first real run is its first test, so a green run is part of completion — or a planned dry-run if it can't run before merge. Mark such surfaces *unproven until executed* in the ledger.
 
    Fix anything you find now, before committing.
 4. **Commit** the task's work.
@@ -178,6 +179,8 @@ move — but you still write the fix.
 - Tell a reviewer what not to flag, or pre-rate a finding's severity in the dispatch prompt ("treat it as Minor at most")
 - Re-dispatch — or redo — a task the progress ledger already marks complete; check the ledger (and `git log`) after any compaction or resume
 - Delegate writing to a sub-agent; sub-agents are read-only review and research passes only
+- Run a throwaway experiment (temp commit, `git checkout <sha>`, scratch branch) without isolating it — a detached HEAD or stray checkout can strand your real commits. Verify your branch/HEAD after any such detour, and prefer a separate worktree for spikes
+- Call a no-oracle change (CI/workflow, release, infra) "done" on a green lint/type-check — those check syntax, not behavior; it isn't proven until a real run (or a planned dry-run) passes
 
 ## Remember
 - Review the plan critically first, including the pre-flight conflict scan

@@ -62,6 +62,15 @@ Layer these on when they carry weight — skip the ones that don't apply:
 - **Testing approach** — what to cover at unit / integration / e2e.
 - **Rollback** — for anything touching data, infra, or shared state: how to undo it.
   Even "revert the PR" is worth stating.
+- **Boundary assumptions** *(integration-heavy designs)* — a table of load-bearing claims
+  about external systems/tools and the repo's state that you couldn't fully discharge
+  while designing: *claim · how it'll be verified (doc-cite / spike / grep) · status*. The
+  plan spikes the open ones before building on them. Omit for pure app-logic changes
+  covered by tests.
+- **Cold-start / first run** *(when anything is stateful or registered)* — for each
+  required check, moving/channel tag, generated secret, or first build/release: what
+  happens on the very first run, before the thing exists. Steady-state behavior is not
+  the same path; design the bootstrap explicitly.
 
 ## Where decisions go (don't write the same thing twice)
 

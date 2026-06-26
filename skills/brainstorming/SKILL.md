@@ -27,7 +27,7 @@ You MUST create a task for each of these items and complete them in order. Items
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
 3. **Interview to alignment** — clarifying questions one at a time, each with your recommended answer; walk the decision tree in dependency order; sharpen terminology as you go. See `grilling.md`.
 4. **Propose 2-3 approaches** — with trade-offs, a rough effort size, and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
+5. **Present design** — in sections scaled to their complexity, get user approval after each section. For integration-heavy designs, falsify load-bearing claims *before* approval (see *Falsify load-bearing claims before they harden*) — don't present a design resting on undischarged external-behavior assumptions.
 6. **Create isolated workspace** — now that the design is approved and the branch name is settled, invoke the using-git-worktrees skill BEFORE writing any file. Every write from here on (spec, glossary, ADRs, plan, code) lands inside the worktree. Steps 1–5 are pure dialogue and stay in the current checkout; the first file write is step 7, and it must happen in the worktree.
 7. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` using the backbone in `spec-format.md`, and commit
 8. **Capture durable decisions** *(conditional)* — update `GLOSSARY.md` for any term that needed canonicalizing; record an ADR for any decision meeting all three criteria, deduped against existing ADRs. See `GLOSSARY-FORMAT.md` and `ADR-FORMAT.md`.
@@ -115,6 +115,22 @@ Ask one question per message, wait, absorb the answer (cross off or open branche
 - Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
+## Falsify load-bearing claims before they harden
+
+A design generates claims faster than it checks them, and an unchecked claim that gets built on is the most expensive error there is — because **review can't catch it**: a reviewer reasoning about plausible prose reaches the same wrong conclusion the author did. So don't defer these to review or to implementation. **Match each claim to the one thing that falsifies it, and do that now, in the design.**
+
+| A claim you're about to write as fact… | …is falsified only by |
+|---|---|
+| **How an external system / tool / platform behaves** — "X accepts a fine-grained token", "the test harness no-ops this import", "this third-party action runs in our setup", "this flag bumps the version" | **Reading the authoritative doc or source**, or a 5-minute spike. Cite it (`URL` or `path:line`). Corpus memory is stale and generic — it does not count as verification. |
+| **A gate / conditional / invariant** — "if X drifts, the check fails" | **Tracing the concrete failure scenario**: walk the exact path where it *should* fire and confirm it does. (Real case: a gate comparing a branch tip to itself — always equal, never fired, and a reviewer waved it through.) |
+| **A fact about this repo** — "there's no such guard", "nothing else reads this" | **grep / read it.** Never assert the codebase's current state from memory. |
+| **That you've listed every surface** — public URLs, env vars, ingress, credentials | **Enumerate from the authoritative source** (the schema, every typed boundary value, every browser/external-initiated call), not the obvious subset — and cross-reference ground truth that already lists them (a CORS block, a config file, an `.env` schema). |
+| **That it works on the first run** — a required check, a channel/moving tag, a generated secret, the first build or release | **Ask "what's the very first run, *before* this thing exists?"** Cold-start is a separate path; if you can't describe it, you haven't designed it. |
+
+Capture the external-behavior and fact claims you can't fully discharge in the design as a short **Boundary assumptions** block (*claim · how it'll be verified · status*) so the plan can spike them before building on them. **Nothing ships as "assumed."**
+
+**Proportionality — when this applies.** This is for designs that touch **external systems, no-oracle surfaces (CI / release / infra-as-config), or stateful bootstrap** — where defects hide because nothing executable proves them. A pure application-logic change covered by tests needs none of it: the test *is* the falsifier. Don't manufacture a register for a button. Scale the rigor to the integration-surface density, not the feature size.
+
 ## After the Design
 
 **Create the workspace first (before any file write):**
@@ -146,6 +162,7 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Claims discharged (integration-heavy designs):** Does any load-bearing claim about an external system, a gate's behavior, or the repo's state still rest on memory? Each should be cited (doc/source), traced (failure scenario), grepped, or listed in the Boundary-assumptions block for the plan to spike. An internal-consistency pass won't catch a confidently-wrong external claim — that's why this is a separate check.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
@@ -166,6 +183,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - **One question at a time** - Don't overwhelm with multiple questions
 - **Always recommend an answer** - Every question carries your pick and a one-line reason; the user confirms or redirects
 - **Code before question** - Don't ask what the repo already answers; find it and cite it
+- **Falsify, don't assert** - A claim about an external system, a gate, or the repo's state is verified by docs/source, a traced failure scenario, or a grep — never by confidence. Match the claim to its falsifier and do it in the design (integration-heavy work; see the section above)
 - **Resolve the decision tree in dependency order** - Root decisions before the leaves they constrain
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
