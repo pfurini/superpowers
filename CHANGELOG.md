@@ -74,6 +74,16 @@ just `skills/`.
 
 ### Changed
 
+- **`executing-plans` adds a per-task simplify step** (2026-06-27).
+  After each task's self-review and before commit/review, a focused
+  behavior-preserving simplification pass over *only* the code that task touched
+  (cut nesting/indirection, dedup, clarity-over-brevity, no nested ternaries;
+  don't over-simplify), with the task's covering tests re-run afterward. The
+  rubric is ported from the official `code-simplifier` agent but kept **inline on
+  the main agent** — the only shape that runs identically across Claude Code /
+  Codex / Cursor, and consistent with "main agent writes; only read-only work is
+  delegated" (no read-write sub-agent).
+
 - **Plan review is now multi-lens** (`a955187`, 2026-06-25).
   Generalizes the earlier single design-coverage gate into three orthogonal
   read-only lenses — **coverage** (always; now bidirectional, also flagging

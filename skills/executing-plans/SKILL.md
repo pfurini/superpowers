@@ -7,7 +7,7 @@ description: Use when you have a written implementation plan to execute on the m
 
 ## Overview
 
-Execute a written plan on the main agent: load it, review it critically, then for each task write the code, test it, self-review, commit, and gate it behind a fresh read-only review pass before moving on. Track progress durably so the work survives compaction. Run a broad whole-branch review at the end.
+Execute a written plan on the main agent: load it, review it critically, then for each task write the code, test it, self-review, simplify, commit, and gate it behind a fresh read-only review pass before moving on. Track progress durably so the work survives compaction. Run a broad whole-branch review at the end.
 
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
@@ -48,9 +48,16 @@ For each task:
    - **Done means exercised, not just green.** Before marking a task done: run the **negative paths** (invalid input, missing field, unauthorized, empty result, max-size) and confirm each fails predictably, not with a crash; for any runnable surface, exercise it once **outside the test harness** (run the binary, hit the endpoint, trigger the real job) — a passing unit test is not a real run; and **cross-check the ask** — re-read the task text and map each thing it asked for to where you addressed it, or why you deferred it.
 
    Fix anything you find now, before committing.
-4. **Commit** the task's work.
-5. **Task review gate.** Dispatch a fresh read-only reviewer (see **The Read-Only Review Gate** below). If it reports spec ✅ and quality approved, continue. Otherwise fix the findings yourself and re-review until clean.
-6. Mark the task complete in the todo list and the progress ledger.
+4. **Simplify.** Make one focused pass over *only* the code this task touched, taking out complexity that crept in while making it work. This is the cheap moment — you hold the full context, and it lands before the review sees the diff:
+   - Cut unnecessary nesting and indirection; inline a one-use abstraction; fold duplicated logic into one place (DRY, without inventing a premature abstraction for a single caller).
+   - Prefer clarity over brevity — explicit code beats a dense one-liner, and no nested ternaries (an if/else chain or a switch reads better).
+   - Delete dead code and comments that just restate what the code does.
+   - **Don't over-simplify:** keep abstractions that earn their place, don't fold unrelated concerns together, and never trade readability for fewer lines. If a change makes the code harder to debug or extend, revert it.
+   - This is behavior-preserving by definition: **re-run the task's covering tests after simplifying** and confirm they still pass before you commit. A simplification that changes behavior is a bug, not a cleanup — root-cause it with superpowers:systematic-debugging if a test goes red.
+   - It extends the self-review's **Discipline** check, not a second competing list: YAGNI catches what you shouldn't have built; this catches complexity in what you did build.
+5. **Commit** the task's work.
+6. **Task review gate.** Dispatch a fresh read-only reviewer (see **The Read-Only Review Gate** below). If it reports spec ✅ and quality approved, continue. Otherwise fix the findings yourself and re-review until clean.
+7. Mark the task complete in the todo list and the progress ledger.
 
 ### Step 3: Final Whole-Branch Review
 
