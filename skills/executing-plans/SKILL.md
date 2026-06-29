@@ -56,7 +56,7 @@ For each task:
    - This is behavior-preserving by definition: **re-run the task's covering tests after simplifying** and confirm they still pass before you commit. A simplification that changes behavior is a bug, not a cleanup — root-cause it with superpowers:systematic-debugging if a test goes red.
    - It extends the self-review's **Discipline** check, not a second competing list: YAGNI catches what you shouldn't have built; this catches complexity in what you did build.
 5. **Commit** the task's work.
-6. **Task review gate.** Dispatch a fresh read-only reviewer (see **The Read-Only Review Gate** below). If it reports spec ✅ and quality approved, continue. Otherwise fix the findings yourself and re-review until clean.
+6. **Task review gate.** Dispatch fresh read-only reviewers over *this task's* diff — the in-model task reviewer, plus the optional Codex cross-model pass (see **The Read-Only Review Gate** below). Reviewing per task keeps each diff small enough for a cross-model pass to handle, and spreads that cost across execution instead of one long terminal loop. If the review reports spec ✅ and quality approved, continue; otherwise fix the findings yourself and re-review until clean.
 7. Mark the task complete in the todo list and the progress ledger.
 
 ### Step 3: Final Whole-Branch Review
@@ -64,8 +64,7 @@ For each task:
 After all tasks are complete and verified, run one broad review of the whole branch before finishing:
 
 - Generate the review package for the full branch: run this skill's `scripts/review-package MERGE_BASE HEAD`, where MERGE_BASE is the commit the branch started from (e.g. `git merge-base main HEAD`). It prints the unique file path it wrote. Without bash, write the package yourself: `git log --oneline`, `git diff --stat`, and `git diff -U10` for the range, redirected to one uniquely named file.
-- Dispatch a read-only final code reviewer using superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md) template, on the most capable available model. Include the review-package path and the rolled-up Minor findings from the ledger so the reviewer can triage which must be fixed before merge.
-- **Optionally** also run a Codex cross-model adversarial review over the branch — the `codex-review` script with `--kind code --base "$(git merge-base main HEAD)"`; see superpowers:requesting-code-review's [codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md) for the exact path. It needs only the `codex` CLI on PATH (no plugin), and degrades to a skip if absent. A different model catches what the in-model reviewer's blind spots share with the author's; consolidate its `[codex]` findings with the final reviewer's (a finding both raise is the strongest signal). Degradable — skip it when Codex isn't installed.
+- Dispatch a read-only final code reviewer using superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md) template, on the most capable available model. Include the review-package path and the rolled-up Minor findings from the ledger so the reviewer can triage which must be fixed before merge. (Cross-model adversarial coverage already happened per task at each gate; this is the in-model whole-branch pass. Don't run a whole-branch Codex pass here — a large changeset chokes it, which is exactly why the cross-model pass runs per task.)
 - If the review returns findings, fix them all yourself in one pass (per superpowers:receiving-code-review), re-run the covering tests, and record the results. Do not spread the fixes across many context rebuilds.
 
 ### Step 4: Complete Development
@@ -82,6 +81,8 @@ The per-task review is a task-scoped gate; the broad review happens once, in Ste
 **Dispatch the task reviewer** with this skill's [task-reviewer-prompt.md](task-reviewer-prompt.md) template, giving it:
 - the task's requirements (the task text from the plan) and the global constraints that bind it,
 - the diff as a file: run this skill's `scripts/review-package BASE HEAD` and pass the reviewer the path it prints (or, without bash, write the package yourself with `git log --oneline`, `git diff --stat`, and `git diff -U10` for the range, redirected to one uniquely named file). The package never enters your own context; the reviewer reads the commit list, stat summary, and full diff in one Read call. Use the BASE you recorded before implementing — never `HEAD~1`, which silently truncates multi-commit tasks.
+
+**Also run the cross-model pass** (optional, recommended): a Codex adversarial review over the *same* task diff — `codex-review --kind code --base <the BASE you recorded in Step 2.1>` (see superpowers:requesting-code-review's [codex-adversarial-review.md](../requesting-code-review/codex-adversarial-review.md)). Run it per task, not at the end: a per-task diff is small and reviews quickly, where a whole-branch pass chokes on a large changeset — and the time is spent during execution instead of in one long final loop. A different model catches what the in-model reviewer's blind spots share with the author's. Consolidate its `[codex]` findings with the in-model reviewer's — a finding both raise is the strongest signal — and re-run it after fixes if it flagged blockers. Degradable: skip it when Codex isn't on `PATH`.
 
 When you fill the reviewer template:
 
@@ -214,7 +215,7 @@ signal to stop and root-cause it.
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code reviewer template for the final whole-branch review (incl. the optional Codex cross-model adversarial pass)
+- **superpowers:requesting-code-review** - Code reviewer template for the final whole-branch review, plus the Codex cross-model adversarial pass run per task at the gate
 - **superpowers:receiving-code-review** - How to act on review findings (verify, don't perform agreement)
 - **superpowers:systematic-debugging** - Root-cause a bug / test-failure blocker before fixing it
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks

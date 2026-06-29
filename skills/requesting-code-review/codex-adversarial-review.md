@@ -27,10 +27,14 @@ skills/requesting-code-review/scripts/codex-review --kind spec --file docs/super
 # Plan review (writing-plans):
 skills/requesting-code-review/scripts/codex-review --kind plan --file docs/superpowers/plans/<file>.md
 
-# Code review (executing-plans final gate):
-skills/requesting-code-review/scripts/codex-review --kind code --base "$(git merge-base main HEAD)"
+# Code review (executing-plans per-task gate — small diff, runs quickly):
+skills/requesting-code-review/scripts/codex-review --kind code --base <BASE recorded before the task>
 ```
 
+- **Scope code review per task, not per branch.** Pass the per-task BASE (the
+  commit recorded before that task) so the diff stays small — a whole-branch base
+  like `git merge-base main HEAD` chokes Codex on a large changeset, and doing it
+  per task spreads the cost across execution instead of one long terminal loop.
 - `--kind` bakes in the right attack framing (a spec is attacked for unfalsifiable
   criteria and missing failure modes; a plan for coverage gaps and infeasible
   tasks; code for auth / data-loss / races / rollback). Add `--focus "<text>"`

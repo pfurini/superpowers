@@ -25,8 +25,10 @@ just `skills/`.
   Depends only on the `codex` CLI on PATH (no third-party plugin), works from any
   shell-capable agent, and degrades to a skip when absent. Wired as an optional
   lens into the brainstorming spec review, the writing-plans plan review, and the
-  executing-plans final review. (Landed plugin-based at `41c9e07`, then ported to
-  the CLI-only mechanism.)
+  executing-plans **per-task** review gate — per task, not over the whole branch,
+  so each diff stays small (a whole-branch pass chokes on a large changeset) and
+  the cost spreads across execution. (Landed plugin-based at `41c9e07`, then
+  ported to the CLI-only mechanism.)
 
 - **Read-only codebase-grounding pass** (`d28a55b`, 2026-06-25).
   `skills/brainstorming/codebase-grounding.md`: scope → entry points → trace &
