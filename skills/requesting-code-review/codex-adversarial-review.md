@@ -59,3 +59,31 @@ apply the fixes yourself per superpowers:receiving-code-review, and re-run the
 pass after fixes if it raised blockers. Cross-model does not mean infallible —
 push back with reasoning on a finding that is wrong, exactly as you would with an
 in-model reviewer.
+
+## Two lenses (`--lens adversarial | rubric`)
+
+The script runs the same plumbing with one of two prompt templates — they are
+**complementary**, so for a high-stakes code change run both and merge:
+
+- **`--lens adversarial`** (default) — `codex-review-prompt.md`: "break confidence"
+  holistic review; works on `spec | plan | code`; catches design / boundary
+  weaknesses. Schema: `codex-review.schema.json`.
+- **`--lens rubric`** (code-only) — `rubric.md`: the codex-native patch-bug rubric
+  (8 bug-qualification guidelines, "prefer no findings", P0–P3); surgical on the
+  diff. Schema: `codex-review-rubric.schema.json`.
+
+```bash
+# both lenses, parallel, on the same diff:
+codex-review --kind code --base "$BASE"   > adv.json &
+codex-review --lens rubric --base "$BASE" > rub.json &
+wait
+review-merge adversarial:adv.json rubric:rub.json   # deterministic merge + high count + consensus
+```
+
+## The local review loop
+
+For a bounded, severity-gated, **local** review loop (no PR, no CI, no cloud
+tokens) — run the lenses, merge, adjudicate (verify-don't-perform), fix the
+confirmed P0/P1, re-review until the high-severity set is empty or a cap stops it
+— follow **[review-loop.md](review-loop.md)**. Terminate on *adjudicated* P0/P1
+convergence, never on "the reviewer went quiet."

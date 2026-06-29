@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Merge findings from one or more codex-review lens outputs into a single
+normalized list, with a deterministic severity tally and cross-lens consensus.
+
+Why this exists: a review LOOP must converge on a number, not on the agent
+eyeballing JSON (that re-introduces the "an LLM asked to find something finds
+something" bias). This collapses the two lens schemas (adversarial:
+severity+verdict; rubric: priority+overall_correctness) into one record shape,
+counts P0/P1 ("high"), and flags findings raised by >=2 lenses (consensus =
+higher signal). It does NOT adjudicate — that is the agent's verify-don't-perform
+step; this only gives it a clean, deduped, counted worklist.
+
+Usage:
+  review-merge LENS:FILE [LENS:FILE ...]      # LENS is any label, e.g. adversarial, rubric, gemini
+  review-merge adversarial:/tmp/a.json rubric:/tmp/r.json
+Stdout: merged JSON {findings:[...], counts:{p0,p1,p2,p3,high}, consensus:[...]}.
+Stderr: one machine-readable line:  REVIEW_MERGE high=<n> p0=.. p1=.. p2=.. p3=.. total=.. consensus=.. lenses=..
+Exit:   0 always (an empty / no-finding review is a valid, expected outcome).
+"""
+import json
+import os
+import sys
+
+SEV_TO_P = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+
+def load(path):
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError) as exc:
+        print(f"review-merge: skipping {path}: {exc}", file=sys.stderr)
+        return None
+
+
+def plevel_label(p):
+    return f"P{p}" if p is not None and 0 <= p <= 3 else "P?"
+
+
+def normalize(lens, doc):
+    """Yield common-shape records from either lens schema."""
+    out = []
+    if not isinstance(doc, dict):
+        return out
+    for f in doc.get("findings", []) or []:
+        if "code_location" in f or "confidence_score" in f or "priority" in f:
+            # rubric schema
+            pr = f.get("priority")
+            loc = f.get("code_location") or {}
+            lr = loc.get("line_range") or {}
+            out.append({
+                "lens": lens,
+                "plevel": pr if isinstance(pr, int) else 2,  # undetermined -> P2
+                "title": f.get("title", ""),
+                "body": f.get("body", ""),
+                "file": loc.get("absolute_file_path", ""),
+                "line_start": lr.get("start"),
+                "line_end": lr.get("end"),
+                "confidence": f.get("confidence_score"),
+            })
+        else:
+            # adversarial schema
+            out.append({
+                "lens": lens,
+                "plevel": SEV_TO_P.get(f.get("severity", "medium"), 2),
+                "title": f.get("title", ""),
+                "body": f.get("body", ""),
+                "file": f.get("file", ""),
+                "line_start": f.get("line_start"),
+                "line_end": f.get("line_end"),
+                "confidence": f.get("confidence"),
+            })
+    return out
+
+
+def bucket(rec):
+    """Coarse identity for consensus matching: file basename + ~10-line band."""
+    base = os.path.basename(rec.get("file") or "")
+    ls = rec.get("line_start")
+    band = (ls // 10) if isinstance(ls, int) else -1
+    return (base, band)
+
+
+def main(argv):
+    if len(argv) < 2:
+        print(__doc__, file=sys.stderr)
+        return 2
+    records, lenses = [], []
+    for arg in argv[1:]:
+        lens, _, path = arg.partition(":")
+        if not path:
+            lens, path = "lens", arg
+        lenses.append(lens)
+        doc = load(path)
+        if doc is not None:
+            records.extend(normalize(lens, doc))
+
+    # Consensus: a bucket touched by >=2 distinct lenses.
+    by_bucket = {}
+    for r in records:
+        by_bucket.setdefault(bucket(r), set()).add(r["lens"])
+    consensus = []
+    for r in records:
+        r["plabel"] = plevel_label(r["plevel"])
+        r["consensus"] = len(by_bucket.get(bucket(r), set())) >= 2
+        if r["consensus"]:
+            consensus.append({"file": r["file"], "line_start": r["line_start"], "title": r["title"]})
+
+    counts = {"p0": 0, "p1": 0, "p2": 0, "p3": 0}
+    for r in records:
+        key = f"p{r['plevel']}" if 0 <= r["plevel"] <= 3 else "p2"
+        counts[key] += 1
+    counts["high"] = counts["p0"] + counts["p1"]
+
+    print(json.dumps({"findings": records, "counts": counts, "consensus": consensus}, indent=2))
+    print(
+        f"REVIEW_MERGE high={counts['high']} p0={counts['p0']} p1={counts['p1']} "
+        f"p2={counts['p2']} p3={counts['p3']} total={len(records)} "
+        f"consensus={len(consensus)} lenses={len(set(lenses))}",
+        file=sys.stderr,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

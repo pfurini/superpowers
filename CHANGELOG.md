@@ -17,6 +17,25 @@ just `skills/`.
 
 ### Added
 
+- **Two-lens `codex-review` + local convergence loop** (2026-06-29).
+  Adds `--lens adversarial|rubric` to `skills/requesting-code-review/scripts/codex-review`
+  (default `adversarial` unchanged). The new `rubric` lens (code-only) runs the
+  codex-native patch-bug review prompt — `scripts/rubric.md`, reproduced **verbatim**
+  from [`openai/codex`](https://github.com/openai/codex)
+  `codex-rs/prompts/templates/review/rubric.md` (exported as `REVIEW_PROMPT`,
+  Apache-2.0) — the same prompt the Codex CLI and the Codex GitHub bot use, with its
+  own output schema (`codex-review-rubric.schema.json`). The two lenses are
+  complementary (holistic "break confidence" vs surgical patch-bug), so a high-stakes
+  change runs both. `scripts/review-merge` normalizes the two schemas into one record
+  shape, tallies P0–P3, flags cross-lens **consensus**, and prints a machine-readable
+  `REVIEW_MERGE high=N …` line. `review-loop.md` documents a bounded, severity-gated
+  **local** loop (run both lenses → merge → adjudicate per `receiving-code-review` →
+  fix confirmed P0/P1 → re-review) that terminates on zero open *adjudicated* P0/P1 or
+  a cycle cap — never on a silent reviewer — so the loop runs locally with no PR / CI /
+  cloud-review tokens. (Running `rubric.md` locally reproduces the Codex bot's review
+  exactly; the only non-local pieces are the cloud model snapshot and the cloud's
+  incremental orchestration.)
+
 - **Cross-model adversarial review via the `codex` CLI** (`a869862`, 2026-06-26).
   A self-contained read-only adversarial reviewer that shells out to `codex exec`
   (read-only sandbox, `--output-schema`) for a *different-model* pass over a spec,

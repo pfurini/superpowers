@@ -2,25 +2,28 @@
 # Cross-model adversarial review via the `codex` CLI — no plugin required.
 #
 # Shells out to `codex exec` (headless) with a read-only sandbox and a JSON
-# output schema, so a *different* model (Codex / GPT-5.x) adversarially reviews a
-# spec, a plan, or a code diff and returns structured findings on stdout. Depends
-# only on `codex` being installed and on PATH (plus `git` for code diffs). Works
-# from any agent that can run a shell.
+# output schema, so a *different* model (Codex / GPT-5.x) reviews a spec, a
+# plan, or a code diff and returns structured findings on stdout. Depends only
+# on `codex` being installed and on PATH (plus `git` for code diffs). Works from
+# any agent that can run a shell.
+#
+# Two lenses (same plumbing, different prompt template):
+#   --lens adversarial  (default)  holistic review; spec | plan | code.
+#   --lens rubric                  codex-native patch-bug rubric; code-only, P0-P3.
+# Complementary — run both and merge with `review-merge`; loop in review-loop.md.
 #
 # Usage:
 #   codex-review --kind spec|plan --file <path> [--focus "..."] [--model M]
 #   codex-review --kind code [--base <ref>] [--focus "..."] [--model M]
+#   codex-review --lens rubric [--base <ref>] [--model M]      # code-only
 #
-# Output: JSON matching codex-review.schema.json (verdict / summary / findings[] /
-#   next_steps) on stdout. Exit codes: 0 = review produced; 2 = bad usage;
-#   3 = codex CLI not found (caller should degrade and skip the cross-model pass).
+# Output: JSON matching the lens's schema on stdout. Exit codes: 0 = review
+#   produced; 2 = bad usage; 3 = codex CLI not found (caller degrades and skips).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PROMPT_TEMPLATE="$HERE/codex-review-prompt.md"
-SCHEMA="$HERE/codex-review.schema.json"
 
-kind="" file="" base="" focus="" model=""
+kind="" file="" base="" focus="" model="" lens="adversarial"
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind)  kind="$2"; shift 2 ;;
@@ -28,11 +31,23 @@ while [ $# -gt 0 ]; do
     --base)  base="$2"; shift 2 ;;
     --focus) focus="$2"; shift 2 ;;
     --model) model="$2"; shift 2 ;;
+    --lens)  lens="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "codex-review: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+case "$lens" in
+  adversarial|rubric) ;;
+  *) echo "codex-review: --lens must be 'adversarial' or 'rubric'" >&2; exit 2 ;;
+esac
+
+# The rubric lens is the codex-native patch-bug reviewer — code diffs only.
+if [ "$lens" = rubric ]; then
+  [ -z "$kind" ] && kind="code"
+  [ "$kind" = code ] || { echo "codex-review: --lens rubric is code-only (got --kind $kind)" >&2; exit 2; }
+fi
 
 [ -n "$kind" ] || { echo "codex-review: --kind is required (spec|plan|code)" >&2; exit 2; }
 
@@ -41,9 +56,19 @@ if ! command -v codex >/dev/null 2>&1; then
   exit 3
 fi
 
-# Build the review input and the dynamic header (kind label + attack surface).
+# Select prompt template + output schema by lens.
+if [ "$lens" = rubric ]; then
+  PROMPT_TEMPLATE="$HERE/rubric.md"
+  SCHEMA="$HERE/codex-review-rubric.schema.json"
+else
+  PROMPT_TEMPLATE="$HERE/codex-review-prompt.md"
+  SCHEMA="$HERE/codex-review.schema.json"
+fi
+
+# Build the review input + the lens-specific lead (header / user message).
 case "$kind" in
   spec|plan)
+    [ "$lens" = adversarial ] || { echo "codex-review: $kind needs --lens adversarial" >&2; exit 2; }
     [ -n "$file" ] || { echo "codex-review: --kind $kind needs --file <path>" >&2; exit 2; }
     [ -f "$file" ] || { echo "codex-review: no such file: $file" >&2; exit 2; }
     # Number every line so findings can cite line ranges precisely.
@@ -54,6 +79,8 @@ case "$kind" in
     else
       attack="Weight: attack the plan's executability — design-coverage gaps, tasks that cannot be executed as written, missing failure/edge handling, ordering and dependency hazards, missing rollback, and unverified boundary assumptions."
     fi
+    header="The material under review is ${label}.
+${attack}"
     ;;
   code)
     if [ -n "$base" ]; then
@@ -62,18 +89,26 @@ case "$kind" in
       input="$(git diff --cached; git diff)"
     fi
     [ -n "$input" ] || { echo "codex-review: empty code diff (nothing to review)" >&2; exit 2; }
-    label="a CODE CHANGE (git diff)"
-    attack="Weight: prioritize expensive, dangerous, hard-to-detect failures — auth / permissions / trust boundaries; data loss, corruption, irreversible state; rollback safety, retries, partial failure, idempotency; races, ordering, stale state; empty / null / timeout / degraded-dependency behavior; version skew, schema drift, migration hazards; observability gaps that hide failure."
+    if [ "$lens" = rubric ]; then
+      # The rubric is the system prompt; this is its "user message". The diff is
+      # pre-supplied on stdin (codex appends a <stdin> block) — the deterministic,
+      # diff-scoped local option (no repo spelunking). Mirrors ReviewTarget::Commit.
+      header="Review the code changes provided as a git diff in the <stdin> block below. The diff IS the patch under review — treat every added/changed line as 'introduced by this change'. Provide prioritized, actionable findings per the guidelines."
+    else
+      label="a CODE CHANGE (git diff)"
+      attack="Weight: prioritize expensive, dangerous, hard-to-detect failures — auth / permissions / trust boundaries; data loss, corruption, irreversible state; rollback safety, retries, partial failure, idempotency; races, ordering, stale state; empty / null / timeout / degraded-dependency behavior; version skew, schema drift, migration hazards; observability gaps that hide failure."
+      header="The material under review is ${label}.
+${attack}"
+    fi
     ;;
   *)
     echo "codex-review: --kind must be spec, plan, or code" >&2; exit 2 ;;
 esac
 
-# Compose the prompt: dynamic header + the fixed adversarial instructions.
-header="The material under review is ${label}.
-${attack}"
 [ -n "$focus" ] && header="${header}
 User focus (weight heavily): ${focus}"
+
+# Compose the prompt: lens lead/header + the lens's instruction template.
 prompt="${header}
 
 $(cat "$PROMPT_TEMPLATE")"
