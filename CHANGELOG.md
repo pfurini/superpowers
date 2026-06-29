@@ -95,6 +95,18 @@ just `skills/`.
 
 ### Changed
 
+- **Cross-model review is mandatory when `codex` is present, and the plan pass checks coverage** (2026-06-29).
+  The Codex pass at every review point (brainstorming spec, writing-plans plan,
+  executing-plans per-task gate) is now **required whenever `codex` is on PATH** —
+  skippable only when it is absent (degradable), no longer an opt-in. And
+  `codex-review` gains `--design <spec>` for `--kind plan`: with it, Codex
+  receives the originating design alongside the plan and verifies **coverage**
+  (every goal / acceptance criterion / non-goal honored, no gold-plating) before
+  executability; without it the prompt no longer claims to assess coverage it
+  cannot see (and warns on stderr). `writing-plans` passes `--design`. Fixes a
+  hollow "design-coverage gaps" instruction the plan review carried while
+  structurally unable to see the design.
+
 - **`executing-plans` adds a per-task simplify step** (2026-06-27).
   After each task's self-review and before commit/review, a focused
   behavior-preserving simplification pass over *only* the code that task touched

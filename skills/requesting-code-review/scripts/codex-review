@@ -13,9 +13,14 @@
 # Complementary — run both and merge with `review-merge`; loop in review-loop.md.
 #
 # Usage:
-#   codex-review --kind spec|plan --file <path> [--focus "..."] [--model M]
+#   codex-review --kind spec --file <spec> [--focus "..."] [--model M]
+#   codex-review --kind plan --file <plan> [--design <spec>] [--focus "..."] [--model M]
 #   codex-review --kind code [--base <ref>] [--focus "..."] [--model M]
 #   codex-review --lens rubric [--base <ref>] [--model M]      # code-only
+#
+# --design <spec> (plan only): the originating design/spec. With it, the review
+#   verifies the plan covers the design (and adds nothing it didn't); without it,
+#   the review checks executability only and does NOT claim to assess coverage.
 #
 # Output: JSON matching the lens's schema on stdout. Exit codes: 0 = review
 #   produced; 2 = bad usage; 3 = codex CLI not found (caller degrades and skips).
@@ -23,15 +28,16 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-kind="" file="" base="" focus="" model="" lens="adversarial"
+kind="" file="" base="" focus="" model="" lens="adversarial" design=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --kind)  kind="$2"; shift 2 ;;
-    --file)  file="$2"; shift 2 ;;
-    --base)  base="$2"; shift 2 ;;
-    --focus) focus="$2"; shift 2 ;;
-    --model) model="$2"; shift 2 ;;
-    --lens)  lens="$2"; shift 2 ;;
+    --kind)   kind="$2"; shift 2 ;;
+    --file)   file="$2"; shift 2 ;;
+    --design) design="$2"; shift 2 ;;
+    --base)   base="$2"; shift 2 ;;
+    --focus)  focus="$2"; shift 2 ;;
+    --model)  model="$2"; shift 2 ;;
+    --lens)   lens="$2"; shift 2 ;;
     -h|--help)
       sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "codex-review: unknown argument: $1" >&2; exit 2 ;;
@@ -72,12 +78,28 @@ case "$kind" in
     [ -n "$file" ] || { echo "codex-review: --kind $kind needs --file <path>" >&2; exit 2; }
     [ -f "$file" ] || { echo "codex-review: no such file: $file" >&2; exit 2; }
     # Number every line so findings can cite line ranges precisely.
-    input="$(awk '{ printf "%6d\t%s\n", NR, $0 }' "$file")"
-    label="a $kind DOCUMENT (\`$file\`), not application code"
+    file_numbered="$(awk '{ printf "%6d\t%s\n", NR, $0 }' "$file")"
     if [ "$kind" = spec ]; then
+      input="$file_numbered"
+      label="a spec DOCUMENT (\`$file\`), not application code"
       attack="Weight: attack the design's soundness — vague or unfalsifiable acceptance criteria, unstated assumptions, failure modes it ignores, missing scope bounds / non-goals, hidden dependencies, and decisions that won't survive real-world load."
+    elif [ -n "$design" ]; then
+      # Plan + its originating design: the review can genuinely check coverage.
+      [ -f "$design" ] || { echo "codex-review: no such design file: $design" >&2; exit 2; }
+      design_numbered="$(awk '{ printf "%6d\t%s\n", NR, $0 }' "$design")"
+      input="===== ORIGINATING DESIGN (\`$design\`) =====
+${design_numbered}
+
+===== IMPLEMENTATION PLAN (\`$file\`) =====
+${file_numbered}"
+      label="an IMPLEMENTATION PLAN (\`$file\`) and its ORIGINATING DESIGN (\`$design\`), not application code"
+      attack="Weight, in order: (1) COVERAGE — every goal, acceptance criterion, and non-goal in the DESIGN must be honored by the PLAN. Flag each design requirement no task covers, and each plan task that serves no design requirement (gold-plating). (2) EXECUTABILITY — tasks that cannot be executed as written, missing failure/edge handling, ordering and dependency hazards, missing rollback, unverified boundary assumptions. Each block is line-numbered from its own line 1; cite the DESIGN or PLAN path in \`file\`."
     else
-      attack="Weight: attack the plan's executability — design-coverage gaps, tasks that cannot be executed as written, missing failure/edge handling, ordering and dependency hazards, missing rollback, and unverified boundary assumptions."
+      # Plan with no design supplied: it is dishonest to claim coverage we can't see.
+      input="$file_numbered"
+      label="an IMPLEMENTATION PLAN (\`$file\`) WITHOUT its originating design, not application code"
+      attack="Weight: attack the plan's executability — tasks that cannot be executed as written, missing failure/edge handling, ordering and dependency hazards, missing rollback, and unverified boundary assumptions. No design was provided, so do NOT assess coverage against the design — you cannot see it."
+      echo "codex-review: note — no --design given; this plan review checks executability only, not coverage against the originating design" >&2
     fi
     header="The material under review is ${label}.
 ${attack}"

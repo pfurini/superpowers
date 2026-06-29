@@ -13,10 +13,13 @@ which shells out to `codex exec` directly. The only requirement is the `codex`
 CLI installed and on `PATH` (plus `git` for code diffs). It works from any agent
 that can run a shell — Claude Code, Cursor, others.
 
-**Optional and degradable.** If `codex` isn't on `PATH`, the script exits `3`
-with a skip notice — treat that as "no cross-model pass available" and rely on
-the in-model lenses. Never block on it. (First-time setup, if needed:
-`npm install -g @openai/codex` then `codex login`.)
+**Mandatory when present; degradable only when absent.** If `codex` is on
+`PATH`, this pass is a required part of every review point that calls it — it is
+not a nice-to-have you skip for time. The only thing that makes it skippable is
+`codex` being unavailable: the script exits `3` with a skip notice, and only then
+do you rely on the in-model lenses alone. Never skip it while `codex` is
+installed. (First-time setup, if needed: `npm install -g @openai/codex` then
+`codex login`.)
 
 ## Invoke it
 
@@ -24,8 +27,8 @@ the in-model lenses. Never block on it. (First-time setup, if needed:
 # Design / spec review (brainstorming):
 skills/requesting-code-review/scripts/codex-review --kind spec --file docs/superpowers/specs/<file>.md
 
-# Plan review (writing-plans):
-skills/requesting-code-review/scripts/codex-review --kind plan --file docs/superpowers/plans/<file>.md
+# Plan review (writing-plans) — pass the originating design so coverage is real:
+skills/requesting-code-review/scripts/codex-review --kind plan --file docs/superpowers/plans/<file>.md --design docs/superpowers/specs/<design>.md
 
 # Code review (executing-plans per-task gate — small diff, runs quickly):
 skills/requesting-code-review/scripts/codex-review --kind code --base <BASE recorded before the task>
